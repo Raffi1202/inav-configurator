@@ -2584,7 +2584,11 @@ function iconKey(filename) {
         // that only needs the reading recomputed can hand it over and skip the lookup.
         let elevation = Number(knownElevation);
         if (isNaN(elevation)) {
-            elevation = Number(await wp.getElevation(globalSettings));
+            try {
+                elevation = Number(await wp.getElevation(globalSettings));
+            } catch (e) {
+                return;
+            }
             if (selectedMarker !== wp || isNaN(elevation)) return;
         }
 
@@ -2610,6 +2614,14 @@ function iconKey(filename) {
         $('#pointP1').val(selectedMarker.getP1());
         $('#pointP2').val(selectedMarker.getP2());
         changeSwitch($('#pointP3Alt'), missionControlTab.isBitSet(selectedMarker.getP3(), MWNP.P3.ALT_TYPE));
+        // A landing's approach fields share the waypoint's datum; after a conversion
+        // they would otherwise keep showing - and write back - the old numbers.
+        if (selectedMarker.getAction() == MWNP.WPTYPE.LAND && selectedFwApproachWp) {
+            $('#wpApproachAlt').val(selectedFwApproachWp.getApproachAltAsl());
+            $('#wpLandAlt').val(selectedFwApproachWp.getLandAltAsl());
+            $('#wpLandAltM').text(selectedFwApproachWp.getLandAltAsl() / 100 + " m");
+            $('#wpApproachAltM').text(selectedFwApproachWp.getApproachAltAsl() / 100 + " m");
+        }
         refreshGroundClearanceDisplay();
     }
 
@@ -2644,8 +2656,16 @@ function iconKey(filename) {
     async function adoptMissionAltitudeReference(waypoint) {
         if (!missionUsesSeaLevel()) return;
 
-        const elevation = Number(await waypoint.getElevation(globalSettings));
-        if (isNaN(elevation)) return;
+        // Adding the waypoint must never hinge on the elevation service: with no answer
+        // it joins on the relative reference, which the log says out loud.
+        let elevation = NaN;
+        try {
+            elevation = Number(await waypoint.getElevation(globalSettings));
+        } catch (e) { /* offline */ }
+        if (isNaN(elevation)) {
+            GUI.log(i18n.getMessage('missionApplyNoElevation'));
+            return;
+        }
 
         waypoint.setP3(missionControlTab.setBit(waypoint.getP3(), MWNP.P3.ALT_TYPE, true));
         waypoint.setAlt(Math.round(Number(settings.alt) + elevation * 100));
@@ -2668,13 +2688,18 @@ function iconKey(filename) {
        locations separated by a pipe and answers in the same order. */
     async function fetchWaypointElevations(waypoints) {
         const elevations = [];
-        for (let start = 0; start < waypoints.length; start += 100) {
-            const chunk = waypoints.slice(start, start + 100);
-            const locations = chunk.map(wp => wp.getLatMap() + ',' + wp.getLonMap()).join('|');
-            const response = await fetch('https://api.opentopodata.org/v1/aster30m?locations=' + locations);
-            const answer = await response.json();
-            if (answer.status != 'OK' || !answer.results || answer.results.length != chunk.length) return null;
-            answer.results.forEach(result => elevations.push(result.elevation == null ? null : result.elevation));
+        try {
+            for (let start = 0; start < waypoints.length; start += 100) {
+                const chunk = waypoints.slice(start, start + 100);
+                const locations = chunk.map(wp => wp.getLatMap() + ',' + wp.getLonMap()).join('|');
+                const response = await fetch('https://api.opentopodata.org/v1/aster30m?locations=' + locations);
+                const answer = await response.json();
+                if (answer.status != 'OK' || !answer.results || answer.results.length != chunk.length) return null;
+                answer.results.forEach(result => elevations.push(result.elevation == null ? null : result.elevation));
+            }
+        } catch (e) {
+            // offline or the service unreachable - same handled failure as a bad answer
+            return null;
         }
         return elevations.some(e => e === null) ? null : elevations;
     }
@@ -2687,8 +2712,12 @@ function iconKey(filename) {
         if (homeMarkers.length) {
             let elevation = Number(HOME.getAlt());
             if (isNaN(elevation)) {
-                elevation = Number(await HOME.getElevation(globalSettings));
-                if (!isNaN(elevation)) HOME.setAlt(elevation);
+                try {
+                    elevation = Number(await HOME.getElevation(globalSettings));
+                    if (!isNaN(elevation)) HOME.setAlt(elevation);
+                } catch (e) {
+                    elevation = NaN;
+                }
             }
             if (!isNaN(elevation)) {
                 return {kind: 'home', groundCm: waypoints.map(() => elevation * 100)};
@@ -2698,13 +2727,34 @@ function iconKey(filename) {
         return terrain ? {kind: 'terrain', groundCm: terrain.map(e => e * 100)} : null;
     }
 
+    var applyingMissionDefaults = false;
+
+    function applySpeedToWaypoints(waypoints) {
+        waypoints.forEach(function (wp) {
+            if (wp.getAction() == MWNP.WPTYPE.WAYPOINT) {
+                wp.setP1(settings.speed);
+            } else if (wp.getAction() == MWNP.WPTYPE.POSHOLD_TIME) {
+                wp.setP2(settings.speed);
+            }
+            mission.updateWaypoint(wp);
+        });
+    }
+
     /* The defaults describe the whole mission, so saving them applies what actually
        changed to every waypoint: a moved reference switch converts, a changed default
        altitude or speed is written out. Nothing is touched while the fields are edited,
        and an unchanged value never rewrites the mission. */
     async function applyMissionDefaults(oldAlt, oldSpeed) {
-        if (disableMarkerEdit) return;
+        if (disableMarkerEdit || applyingMissionDefaults) return;
+        applyingMissionDefaults = true;
+        try {
+            await applyMissionDefaultsLocked(oldAlt, oldSpeed);
+        } finally {
+            applyingMissionDefaults = false;
+        }
+    }
 
+    async function applyMissionDefaultsLocked(oldAlt, oldSpeed) {
         const toAbsolute = $('#MPapplySlrValue').prop('checked');
         const switchMoved = toAbsolute !== seaLevelSwitchOnOpen;
         const altChanged = settings.alt !== oldAlt;
@@ -2717,14 +2767,50 @@ function iconKey(filename) {
             return;
         }
 
-        // The default altitude is a height above the ground, so writing it into a sea
-        // level mission needs the same ground levels the reference conversion uses.
+        // A failed altitude apply is rolled back into the settings so the next save can
+        // retry it - otherwise nothing would count as changed any more.
+        const revertAltitude = function () {
+            settings.alt = oldAlt;
+            $('#MPdefaultPointAlt').val(String(oldAlt));
+            saveSettings();
+        };
+
+        // The default altitude is a height above the ground, so writing it into a
+        // waypoint that reads its altitude from sea level needs the same ground levels
+        // the reference conversion uses. Individual waypoints can sit on either datum.
+        const anyAbsolute = waypoints.some(wp => missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE));
         let reference = null;
-        if (switchMoved || (altChanged && toAbsolute)) {
+        if (switchMoved || (altChanged && anyAbsolute)) {
             reference = await resolveAltitudeReference(waypoints);
             if (!reference) {
-                GUI.log(i18n.getMessage('missionApplyNoElevation'));
+                // The speed needs no ground levels, so it is still written
+                if (speedChanged) {
+                    applySpeedToWaypoints(waypoints);
+                    mission.update(singleMissionActive());
+                    syncEditPanelWithSelection();
+                    redrawLayer();
+                    $('#MPapplySpeedSaved').show();
+                    GUI.log(i18n.getMessage('missionApplySpeedApplied', [String(waypoints.length)]));
+                }
+                if (altChanged) revertAltitude();
                 changeSwitch($('#MPapplySlrValue'), seaLevelSwitchOnOpen);
+                GUI.log(i18n.getMessage('missionApplyNoElevation'));
+                return;
+            }
+
+            // The fetch took real time; deleting waypoints, switching the multi
+            // mission or loading a file meanwhile replaced the mission, and writing
+            // the captured waypoints back would resurrect it. Start over instead.
+            const current = wpListSelectableWaypoints();
+            if (current.length !== waypoints.length || current.some((wp, i) => wp !== waypoints[i])) {
+                if (altChanged) revertAltitude();
+                if (speedChanged) {
+                    settings.speed = oldSpeed;
+                    $('#MPdefaultPointSpeed').val(String(oldSpeed));
+                    saveSettings();
+                }
+                refreshSeaLevelSwitch();
+                GUI.log(i18n.getMessage('missionApplyMissionChanged'));
                 return;
             }
         }
@@ -2750,9 +2836,12 @@ function iconKey(filename) {
                     }
                 }
             }
+            // Written on the waypoint's own datum: a mission can carry mixed
+            // references, set per waypoint in the point editor.
+            const wpAbsolute = missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE);
             // A POI's altitude is not flown, so the default is not forced onto it
             if (altChanged && wp.getAction() != MWNP.WPTYPE.SET_POI) {
-                wp.setAlt(toAbsolute ? Math.round(groundCm + settings.alt) : settings.alt);
+                wp.setAlt(wpAbsolute ? Math.round(groundCm + settings.alt) : settings.alt);
             }
             if (speedChanged) {
                 if (wp.getAction() == MWNP.WPTYPE.WAYPOINT) {
@@ -2764,7 +2853,7 @@ function iconKey(filename) {
             // Converting can leave a waypoint under the terrain, which would fly the
             // mission into the ground, so it is reported rather than silently corrected.
             if (reference) {
-                const clearance = toAbsolute ? wp.getAlt() - groundCm : wp.getAlt();
+                const clearance = wpAbsolute ? wp.getAlt() - groundCm : wp.getAlt();
                 if (clearance < 0) belowGround++;
             }
             mission.updateWaypoint(wp);

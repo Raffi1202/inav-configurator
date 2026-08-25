@@ -5011,7 +5011,10 @@
         "message": "$1 waypoints in the mission"
     },
     "missionApplyNoElevation": {
-        "message": "Elevation lookup failed, sea level reference not changed"
+        "message": "Elevation lookup failed, altitudes were not changed"
+    },
+    "missionApplyMissionChanged": {
+        "message": "The mission changed while elevations were loading, nothing was saved"
     },
     "missionApplyViaHome": {
         "message": "Sea level reference applied to $1 waypoint(s), converted via the home elevation"
