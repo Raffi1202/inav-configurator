@@ -624,6 +624,12 @@
     font-weight: bold;
 }
 
+.tab-mission-control .mpUnitHint {
+    margin-left: 4px;
+    color: #888;
+    font-size: 11px;
+}
+
 .tab-mission-control .btnMenu a {
     /*  common styles for content toolbar buttons */
     /*margin-top: 0;*/

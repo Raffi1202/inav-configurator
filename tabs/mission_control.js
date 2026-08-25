@@ -1110,6 +1110,16 @@ function iconKey(filename) {
         $('#MPdefaultSafeRangeSH').val(String(settings.safeRadiusSH));
         $('#MPdefaultFwApproachAlt').val(String(settings.fwApproachAlt));
         $('#MPdefaultLandAlt').val(String(settings.fwLandAlt));
+        updateDefaultUnitHints();
+    }
+
+    /* The fields hold centimetres and centimetres per second, which nobody flies in,
+       so each carries its value in metres and km/h alongside. */
+    function updateDefaultUnitHints() {
+        const altCm = Number($('#MPdefaultPointAlt').val());
+        const speedCms = Number($('#MPdefaultPointSpeed').val());
+        $('#MPdefaultPointAltM').text(isNaN(altCm) ? '' : ' ' + (altCm / 100) + 'm');
+        $('#MPdefaultPointSpeedKmh').text(isNaN(speedCms) ? '' : ' ' + (Math.round(speedCms * 0.36) / 10) + 'km/h');
     }
 
     function closeSettingsPanel() {
@@ -2603,7 +2613,7 @@ function iconKey(filename) {
         }
         document.getElementById('groundClearanceAtWP').style.color =
             (typeof clearance === 'number' && clearance < settings.alt / 100) ? "#FF0000" : "#303030";
-        $('#groundClearanceValueAtWP').text(` ${clearance}`);
+        $('#groundClearanceValueAtWP').val(clearance);
     }
 
     /* Push values a save may have altered back into the single point panel directly:
@@ -4017,7 +4027,7 @@ function iconKey(filename) {
                     if (P3Value != selectedMarker.getP3()) {
                         selectedMarker.setP3(P3Value);
 
-                        let groundClearance = 100 * Number($('#groundClearanceValueAtWP').text());
+                        let groundClearance = 100 * Number($('#groundClearanceValueAtWP').val());
                         if (isNaN(groundClearance)) {
                             groundClearance = settings.alt; // use default altitude if no current ground clearance
                         }
@@ -5078,9 +5088,46 @@ function iconKey(filename) {
         });
         $('#MPdefaultPointAlt').on('input change', function () {
             $('#MPapplyAltSaved').hide();
+            updateDefaultUnitHints();
         });
         $('#MPdefaultPointSpeed').on('input change', function () {
             $('#MPapplySpeedSaved').hide();
+            updateDefaultUnitHints();
+        });
+
+        // Typing the wanted ground clearance computes the altitude, instead of the
+        // pilot adding terrain height and clearance by hand.
+        $('#groundClearanceValueAtWP').on('change', function () {
+            if (!selectedMarker || disableMarkerEdit) return;
+
+            const clearance = Number($(this).val());
+            const elevation = Number($('#elevationValueAtWP').text());
+            if (isNaN(clearance) || isNaN(elevation)) {
+                refreshGroundClearanceDisplay();
+                return;
+            }
+
+            // Inverse of the two display formulas: absolute is clearance above the
+            // terrain; relative counts from home, so the terrain-home offset is added.
+            let altitude;
+            if (missionControlTab.isBitSet(selectedMarker.getP3(), MWNP.P3.ALT_TYPE)) {
+                altitude = Math.round((clearance + elevation) * 100);
+            } else if (homeMarkers.length && HOME.getAlt() != "N/A") {
+                altitude = Math.round((clearance + elevation - Number(HOME.getAlt())) * 100);
+            } else {
+                // without home a relative altitude cannot be derived from a clearance
+                refreshGroundClearanceDisplay(elevation);
+                return;
+            }
+
+            selectedMarker.setAlt(altitude);
+            mission.updateWaypoint(selectedMarker);
+            mission.update(singleMissionActive());
+            $('#pointAlt').val(altitude);
+            $('#altitudeInMeters').text(' ' + convertCentimetersToMeters(altitude) + 'm');
+            redrawLayer();
+            plotElevation();
+            refreshGroundClearanceDisplay(elevation);
         });
 
         updateTotalInfo();
@@ -5504,7 +5551,7 @@ function iconKey(filename) {
                     dialog.alert(i18n.getMessage('MissionPlannerAltitudeChangeReset'));
                     altitude = selectedMarker.getAlt();
                 } else {
-                    let currentGroundClearance = 100 * Number($('#groundClearanceValueAtWP').text());
+                    let currentGroundClearance = 100 * Number($('#groundClearanceValueAtWP').val());
                     if (isNaN(currentGroundClearance) || selectedMarker == null) {
                         currentGroundClearance = settings.alt;  // use default altitude if no current ground clearance
                     }
@@ -5517,7 +5564,7 @@ function iconKey(filename) {
         let altitudeMeters = parseInt(altitude) / 100;
         $('#altitudeInMeters').text(` ${altitudeMeters}m`);
         document.getElementById('groundClearanceAtWP').style.color = groundClearance < (settings.alt / 100) ? "#FF0000" : "#303030";
-        $('#groundClearanceValueAtWP').text(` ${groundClearance}`);
+        $('#groundClearanceValueAtWP').val(groundClearance);
 
         return altitude;
     }

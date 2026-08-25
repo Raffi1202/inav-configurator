@@ -121,11 +121,13 @@
                         <div class="point">
                             <label class="point-label" for="MPdefaultPointAlt" data-i18n="missionDefaultPointAlt"></label>
                             <input id="MPdefaultPointAlt" type="text" value="0" required>
+                            <span id="MPdefaultPointAltM" class="mpUnitHint"></span>
                             <span id="MPapplyAltSaved" class="mpApplySaved" style="display: none">&#10003;</span>
                         </div>
                         <div class="point">
                             <label class="point-label" for="MPdefaultPointSpeed" data-i18n="missionDefaultPointSpeed"></label>
                             <input id="MPdefaultPointSpeed" type="text" value="0" required>
+                            <span id="MPdefaultPointSpeedKmh" class="mpUnitHint"></span>
                             <span id="MPapplySpeedSaved" class="mpApplySaved" style="display: none">&#10003;</span>
                         </div>
                         <div class="point">
@@ -494,8 +496,8 @@
                             <span id="elevationValueAtWP" data-i18n="missionNA"></span>
                         </div>
                         <div class="point" id="groundClearanceAtWP" style="display: none">
-                            <label class="point-label" data-i18n="missionGroundDist"></label>
-                            <span id="groundClearanceValueAtWP" data-i18n="missionNA"></span>
+                            <label class="point-label" for="groundClearanceValueAtWP" data-i18n="missionGroundDist"></label>
+                            <input id="groundClearanceValueAtWP" type="text" value="">
                         </div>
                         <div class="point" id="pointP1class" style="display: none">
                             <label class="point-label" for="pointP1" data-i18n="missionParameter1"></label>
