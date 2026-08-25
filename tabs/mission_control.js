@@ -78,6 +78,7 @@ import interval from './../js/intervals';
 import { Geozone, GeozoneVertex, GeozoneType, GeozoneShapes, GeozoneFenceAction }  from './../js/geozone';
 import store from './../js/store';
 import dialog from '../js/dialog';
+import elevationFetch from './../js/elevationFetch';
 import {
     getMission3DPlannedHeight,
     getMission3DPointLabel,
@@ -2692,7 +2693,7 @@ function iconKey(filename) {
             for (let start = 0; start < waypoints.length; start += 100) {
                 const chunk = waypoints.slice(start, start + 100);
                 const locations = chunk.map(wp => wp.getLatMap() + ',' + wp.getLonMap()).join('|');
-                const response = await fetch('https://api.opentopodata.org/v1/aster30m?locations=' + locations);
+                const response = await elevationFetch('https://api.opentopodata.org/v1/aster30m?locations=' + locations);
                 const answer = await response.json();
                 if (answer.status != 'OK' || !answer.results || answer.results.length != chunk.length) return null;
                 answer.results.forEach(result => elevations.push(result.elevation == null ? null : result.elevation));
@@ -3694,10 +3695,17 @@ function iconKey(filename) {
             }
         };
 
+        // Hit-testing reads pixels back from the canvas, which is expensive and floods
+        // the console with Chrome's readback warning when done on every mouse move, so
+        // both hover handlers are held to a few checks per second.
+        let lastHoverInfoAt = 0;
         map.on('pointermove', function(evt) {
             if (evt.dragging) {
                 return;
             }
+            const now = Date.now();
+            if (now - lastHoverInfoAt < 150) return;
+            lastHoverInfoAt = now;
             const pixel = map.getEventPixel(evt.originalEvent);
             displayFeatureInfo(pixel);
         });
@@ -3811,7 +3819,11 @@ function iconKey(filename) {
         //////////////////////////////////////////////////////////////////////////
         // change mouse cursor when over marker
         //////////////////////////////////////////////////////////////////////////
+        let lastHoverCursorAt = 0;
         $(map.getViewport()).on('mousemove', function (e) {
+            const nowCursor = Date.now();
+            if (nowCursor - lastHoverCursorAt < 150) return;
+            lastHoverCursorAt = nowCursor;
             var pixel = map.getEventPixel(e.originalEvent);
             var name = "";
             var hit = map.forEachFeatureAtPixel(pixel, function (feature, layer) {
