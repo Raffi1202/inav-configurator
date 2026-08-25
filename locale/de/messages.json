@@ -5012,6 +5012,12 @@
     "missionApplyViaTerrain": {
         "message": "Meeresspiegel-Referenz auf $1 Wegpunkt(e) angewendet, umgerechnet \u00fcber die Gel\u00e4ndeh\u00f6he je Wegpunkt"
     },
+    "missionApplyAltApplied": {
+        "message": "Standardh\u00f6he auf $1 Wegpunkt(e) angewendet"
+    },
+    "missionApplySpeedApplied": {
+        "message": "Standard-Speed auf $1 Wegpunkt(e) angewendet"
+    },
     "missionApplyBelowGround": {
         "message": "Achtung: $1 Wegpunkt(e) liegen jetzt unter dem Boden, bitte H\u00f6hen pr\u00fcfen"
     },

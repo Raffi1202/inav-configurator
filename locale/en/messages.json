@@ -5019,6 +5019,12 @@
     "missionApplyViaTerrain": {
         "message": "Sea level reference applied to $1 waypoint(s), converted via the terrain under each waypoint"
     },
+    "missionApplyAltApplied": {
+        "message": "Default altitude applied to $1 waypoint(s)"
+    },
+    "missionApplySpeedApplied": {
+        "message": "Default speed applied to $1 waypoint(s)"
+    },
     "missionApplyBelowGround": {
         "message": "Warning: $1 waypoint(s) now sit below the ground, check the altitudes"
     },

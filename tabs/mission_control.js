@@ -2634,7 +2634,7 @@ function iconKey(filename) {
     function refreshSeaLevelSwitch() {
         seaLevelSwitchOnOpen = missionUsesSeaLevel();
         changeSwitch($('#MPapplySlrValue'), seaLevelSwitchOnOpen);
-        $('#MPapplySlrSaved').hide();
+        $('.mpApplySaved').hide();
     }
 
     /* A new waypoint is built from the default altitude, which is a height above the
@@ -2698,11 +2698,18 @@ function iconKey(filename) {
         return terrain ? {kind: 'terrain', groundCm: terrain.map(e => e * 100)} : null;
     }
 
-    /* The switch does not touch the mission while it is being moved; saving is what
-       converts, and only when it was actually moved. */
-    async function applySeaLevelReference() {
+    /* The defaults describe the whole mission, so saving them applies what actually
+       changed to every waypoint: a moved reference switch converts, a changed default
+       altitude or speed is written out. Nothing is touched while the fields are edited,
+       and an unchanged value never rewrites the mission. */
+    async function applyMissionDefaults(oldAlt, oldSpeed) {
+        if (disableMarkerEdit) return;
+
         const toAbsolute = $('#MPapplySlrValue').prop('checked');
-        if (disableMarkerEdit || toAbsolute === seaLevelSwitchOnOpen) return;
+        const switchMoved = toAbsolute !== seaLevelSwitchOnOpen;
+        const altChanged = settings.alt !== oldAlt;
+        const speedChanged = settings.speed !== oldSpeed;
+        if (!switchMoved && !altChanged && !speedChanged) return;
 
         const waypoints = wpListSelectableWaypoints();
         if (!waypoints.length) {
@@ -2710,17 +2717,22 @@ function iconKey(filename) {
             return;
         }
 
-        const reference = await resolveAltitudeReference(waypoints);
-        if (!reference) {
-            GUI.log(i18n.getMessage('missionApplyNoElevation'));
-            changeSwitch($('#MPapplySlrValue'), seaLevelSwitchOnOpen);
-            return;
+        // The default altitude is a height above the ground, so writing it into a sea
+        // level mission needs the same ground levels the reference conversion uses.
+        let reference = null;
+        if (switchMoved || (altChanged && toAbsolute)) {
+            reference = await resolveAltitudeReference(waypoints);
+            if (!reference) {
+                GUI.log(i18n.getMessage('missionApplyNoElevation'));
+                changeSwitch($('#MPapplySlrValue'), seaLevelSwitchOnOpen);
+                return;
+            }
         }
 
         let belowGround = 0;
         waypoints.forEach(function (wp, index) {
-            const groundCm = reference.groundCm[index];
-            if (missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE) != toAbsolute) {
+            const groundCm = reference ? reference.groundCm[index] : 0;
+            if (switchMoved && missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE) != toAbsolute) {
                 wp.setP3(missionControlTab.setBit(wp.getP3(), MWNP.P3.ALT_TYPE, toAbsolute));
                 wp.setAlt(Math.round(wp.getAlt() + (toAbsolute ? groundCm : -groundCm)));
                 // A landing carries its own approach and land altitudes on the same
@@ -2738,10 +2750,23 @@ function iconKey(filename) {
                     }
                 }
             }
+            // A POI's altitude is not flown, so the default is not forced onto it
+            if (altChanged && wp.getAction() != MWNP.WPTYPE.SET_POI) {
+                wp.setAlt(toAbsolute ? Math.round(groundCm + settings.alt) : settings.alt);
+            }
+            if (speedChanged) {
+                if (wp.getAction() == MWNP.WPTYPE.WAYPOINT) {
+                    wp.setP1(settings.speed);
+                } else if (wp.getAction() == MWNP.WPTYPE.POSHOLD_TIME) {
+                    wp.setP2(settings.speed);
+                }
+            }
             // Converting can leave a waypoint under the terrain, which would fly the
             // mission into the ground, so it is reported rather than silently corrected.
-            const clearance = toAbsolute ? wp.getAlt() - groundCm : wp.getAlt();
-            if (clearance < 0) belowGround++;
+            if (reference) {
+                const clearance = toAbsolute ? wp.getAlt() - groundCm : wp.getAlt();
+                if (clearance < 0) belowGround++;
+            }
             mission.updateWaypoint(wp);
         });
 
@@ -2750,10 +2775,17 @@ function iconKey(filename) {
         syncEditPanelWithSelection();
         redrawLayer();
         plotElevation();
-        $('#MPapplySlrSaved').show();
 
-        GUI.log(i18n.getMessage(reference.kind === 'home' ? 'missionApplyViaHome' : 'missionApplyViaTerrain',
-                                [String(waypoints.length)]));
+        if (switchMoved) $('#MPapplySlrSaved').show();
+        if (altChanged) $('#MPapplyAltSaved').show();
+        if (speedChanged) $('#MPapplySpeedSaved').show();
+
+        if (reference) {
+            GUI.log(i18n.getMessage(reference.kind === 'home' ? 'missionApplyViaHome' : 'missionApplyViaTerrain',
+                                    [String(waypoints.length)]));
+        }
+        if (altChanged) GUI.log(i18n.getMessage('missionApplyAltApplied', [String(waypoints.length)]));
+        if (speedChanged) GUI.log(i18n.getMessage('missionApplySpeedApplied', [String(waypoints.length)]));
         if (belowGround) {
             GUI.log(i18n.getMessage('missionApplyBelowGround', [String(belowGround)]));
         }
@@ -4906,6 +4938,8 @@ function iconKey(filename) {
         /////////////////////////////////////////////
         $('#saveSettings').on('click', async function () {
             let oldSafeRadiusSH = settings.safeRadiusSH;
+            const oldAlt = settings.alt;
+            const oldSpeed = settings.speed;
 
             // update only default settings
             settings.alt = Number($('#MPdefaultPointAlt').val());
@@ -4922,9 +4956,9 @@ function iconKey(filename) {
                 $('#SafeHomeSafeDistance').text(settings.safeRadiusSH);
             }
 
-            // The box stays open on save so the tick next to the switch is visible;
+            // The box stays open on save so the ticks next to the fields are visible;
             // the cancel button is what closes it.
-            await applySeaLevelReference();
+            await applyMissionDefaults(oldAlt, oldSpeed);
 
             // The clearance display warns against the default altitude, which may just
             // have changed, so recompute it against the terrain already on screen.
@@ -4937,9 +4971,15 @@ function iconKey(filename) {
             closeSettingsPanel();
         });
 
-        // Moving the switch clears the tick of the previous save
+        // Editing a value clears the tick of the previous save
         $('#MPapplySlrValue').on('change', function () {
             $('#MPapplySlrSaved').hide();
+        });
+        $('#MPdefaultPointAlt').on('input change', function () {
+            $('#MPapplyAltSaved').hide();
+        });
+        $('#MPdefaultPointSpeed').on('input change', function () {
+            $('#MPapplySpeedSaved').hide();
         });
 
         updateTotalInfo();
