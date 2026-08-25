@@ -618,38 +618,10 @@
     color: #888;
 }
 
-.tab-mission-control input.mpApplyEnable {
-    width: 14px;
-    height: 14px;
-    margin-right: 4px;
-    vertical-align: middle;
-}
-
-.tab-mission-control .mpApplyLabel {
-    display: inline-block;
-    width: 130px;
-    margin-right: 4px;
-}
-
-.tab-mission-control #MPapplyAltMode {
-    width: 80px;
-}
-
-.tab-mission-control .mpApplyHint {
-    padding: 2px 0;
-    font-size: 11px;
-    color: #888;
-}
-
-.tab-mission-control .mpApplyStatus {
-    min-height: 14px;
-    padding-top: 4px;
-    font-size: 11px;
-    color: #3394b5;
-}
-
-.tab-mission-control .mpApplyStatus.mpApplyStatusError {
-    color: #b5480e;
+.tab-mission-control .mpApplySaved {
+    margin-left: 6px;
+    color: #28a745;
+    font-weight: bold;
 }
 
 .tab-mission-control .btnMenu a {

@@ -5010,56 +5010,17 @@
     "missionWpListCount": {
         "message": "$1 waypoints in the mission"
     },
-    "missionApplyHead": {
-        "message": "Apply to all waypoints"
-    },
-    "missionApplyDefaultsSaved": {
-        "message": "Defaults saved"
-    },
-    "missionApplyAlt": {
-        "message": "Altitude above"
-    },
-    "missionApplySpeed": {
-        "message": "Speed above"
-    },
-    "missionApplyModeSet": {
-        "message": "Set"
-    },
-    "missionApplyModeAdd": {
-        "message": "Add"
-    },
-    "missionApplyHint": {
-        "message": "Ticked values are written to the waypoints when you save."
-    },
-    "missionApplySaved": {
-        "message": "Saved on $1 waypoint(s): $2"
-    },
-    "missionApplyNoWaypoints": {
-        "message": "The mission has no waypoints"
-    },
-    "missionApplyWorking": {
-        "message": "Reading elevations..."
-    },
     "missionApplyNoElevation": {
         "message": "Elevation lookup failed, sea level reference not changed"
     },
     "missionApplyViaHome": {
-        "message": "(converted via home elevation)"
+        "message": "Sea level reference applied to $1 waypoint(s), converted via the home elevation"
     },
     "missionApplyViaTerrain": {
-        "message": "(converted via the terrain under each waypoint)"
+        "message": "Sea level reference applied to $1 waypoint(s), converted via the terrain under each waypoint"
     },
     "missionApplyBelowGround": {
-        "message": "- warning: $1 waypoint(s) now sit below the ground, check the altitudes"
-    },
-    "missionApplyAltShort": {
-        "message": "altitude"
-    },
-    "missionApplySpeedShort": {
-        "message": "speed"
-    },
-    "missionApplySlrShort": {
-        "message": "sea level reference"
+        "message": "Warning: $1 waypoint(s) now sit below the ground, check the altitudes"
     },
     "missionElevation": {
         "message": "Elevation (m):"

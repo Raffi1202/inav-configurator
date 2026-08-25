@@ -5003,56 +5003,17 @@
     "missionWpListCount": {
         "message": "$1 Wegpunkte in der Mission"
     },
-    "missionApplyHead": {
-        "message": "Auf alle Wegpunkte anwenden"
-    },
-    "missionApplyDefaultsSaved": {
-        "message": "Standardwerte gespeichert"
-    },
-    "missionApplyAlt": {
-        "message": "H\u00f6he von oben"
-    },
-    "missionApplySpeed": {
-        "message": "Speed von oben"
-    },
-    "missionApplyModeSet": {
-        "message": "Setzen"
-    },
-    "missionApplyModeAdd": {
-        "message": "Addieren"
-    },
-    "missionApplyHint": {
-        "message": "Angehakte Werte werden beim Speichern in die Wegpunkte geschrieben."
-    },
-    "missionApplySaved": {
-        "message": "Auf $1 Wegpunkt(en) gespeichert: $2"
-    },
-    "missionApplyNoWaypoints": {
-        "message": "Die Mission enth\u00e4lt keine Wegpunkte"
-    },
-    "missionApplyWorking": {
-        "message": "Gel\u00e4ndeh\u00f6hen werden abgefragt..."
-    },
     "missionApplyNoElevation": {
         "message": "H\u00f6henabfrage fehlgeschlagen, Meeresspiegel-Referenz nicht ge\u00e4ndert"
     },
     "missionApplyViaHome": {
-        "message": "(umgerechnet \u00fcber die Home-H\u00f6he)"
+        "message": "Meeresspiegel-Referenz auf $1 Wegpunkt(e) angewendet, umgerechnet \u00fcber die Home-H\u00f6he"
     },
     "missionApplyViaTerrain": {
-        "message": "(umgerechnet \u00fcber die Gel\u00e4ndeh\u00f6he je Wegpunkt)"
+        "message": "Meeresspiegel-Referenz auf $1 Wegpunkt(e) angewendet, umgerechnet \u00fcber die Gel\u00e4ndeh\u00f6he je Wegpunkt"
     },
     "missionApplyBelowGround": {
-        "message": "- Achtung: $1 Wegpunkt(e) liegen jetzt unter dem Boden, bitte H\u00f6hen pr\u00fcfen"
-    },
-    "missionApplyAltShort": {
-        "message": "H\u00f6he"
-    },
-    "missionApplySpeedShort": {
-        "message": "Speed"
-    },
-    "missionApplySlrShort": {
-        "message": "Meeresspiegel-Referenz"
+        "message": "Achtung: $1 Wegpunkt(e) liegen jetzt unter dem Boden, bitte H\u00f6hen pr\u00fcfen"
     },
     "missionElevation": {
         "message": "Geländehöhe (m):"

@@ -2610,8 +2610,16 @@ function iconKey(filename) {
         selectWaypointFromList(waypoints[next].getNumber());
     }
 
-    function setApplyStatus(message, isError) {
-        $('#MPapplyStatus').text(message).toggleClass('mpApplyStatusError', Boolean(isError));
+    /* The switch is read back from the mission when the box opens, so saving only
+       converts when the pilot actually moved it. */
+    var seaLevelSwitchOnOpen = false;
+
+    function refreshSeaLevelSwitch() {
+        const waypoints = wpListSelectableWaypoints();
+        seaLevelSwitchOnOpen = waypoints.length > 0
+            && missionControlTab.isBitSet(waypoints[0].getP3(), MWNP.P3.ALT_TYPE);
+        changeSwitch($('#MPapplySlrValue'), seaLevelSwitchOnOpen);
+        $('#MPapplySlrSaved').hide();
     }
 
     /* One request for the whole mission instead of one per waypoint; opentopodata takes
@@ -2648,90 +2656,51 @@ function iconKey(filename) {
         return terrain ? {kind: 'terrain', groundCm: terrain.map(e => e * 100)} : null;
     }
 
-    /* Nothing reaches the mission while the fields are edited. Only ticked parameters are
-       applied, and only on save, so no value changes by accident. */
-    async function applyMissionParameters() {
-        if (disableMarkerEdit) return false;
+    /* The switch does not touch the mission while it is being moved; saving is what
+       converts, and only when it was actually moved. */
+    async function applySeaLevelReference() {
+        const toAbsolute = $('#MPapplySlrValue').prop('checked');
+        if (disableMarkerEdit || toAbsolute === seaLevelSwitchOnOpen) return;
 
-        const changeAlt = $('#MPapplyAlt').prop('checked');
-        const changeSpeed = $('#MPapplySpeed').prop('checked');
-        const changeSlr = $('#MPapplySlr').prop('checked');
-        if (!changeAlt && !changeSpeed && !changeSlr) return false;
-
-        // These are the mission defaults, so they always cover the whole mission.
-        // A single waypoint is edited in the point editor instead.
-        const targets = wpListSelectableWaypoints();
-
-        if (!targets.length) {
-            setApplyStatus(i18n.getMessage('missionApplyNoWaypoints'), true);
-            return true;
+        const waypoints = wpListSelectableWaypoints();
+        if (!waypoints.length) {
+            seaLevelSwitchOnOpen = toAbsolute;
+            return;
         }
 
-        const altValue = Number($('#MPdefaultPointAlt').val());
-        const speedValue = Number($('#MPdefaultPointSpeed').val());
-        const addAltitude = $('#MPapplyAltMode').val() === 'add';
-        const toAbsolute = $('#MPapplySlrValue').prop('checked');
-
-        let reference = null;
-        if (changeSlr) {
-            setApplyStatus(i18n.getMessage('missionApplyWorking'), false);
-            reference = await resolveAltitudeReference(targets);
-            if (!reference) {
-                setApplyStatus(i18n.getMessage('missionApplyNoElevation'), true);
-                return true;
-            }
+        const reference = await resolveAltitudeReference(waypoints);
+        if (!reference) {
+            GUI.log(i18n.getMessage('missionApplyNoElevation'));
+            changeSwitch($('#MPapplySlrValue'), seaLevelSwitchOnOpen);
+            return;
         }
 
         let belowGround = 0;
-
-        targets.forEach(function (wp, index) {
-            // The reference switch runs first so an altitude entered above is read in the
-            // reference the user just picked.
-            if (changeSlr && missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE) != toAbsolute) {
+        waypoints.forEach(function (wp, index) {
+            const groundCm = reference.groundCm[index];
+            if (missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE) != toAbsolute) {
                 wp.setP3(missionControlTab.setBit(wp.getP3(), MWNP.P3.ALT_TYPE, toAbsolute));
-                const groundCm = reference.groundCm[index];
                 wp.setAlt(Math.round(wp.getAlt() + (toAbsolute ? groundCm : -groundCm)));
             }
-            if (changeAlt && !isNaN(altValue) && wp.getAction() != MWNP.WPTYPE.SET_POI) {
-                wp.setAlt(addAltitude ? wp.getAlt() + altValue : altValue);
-            }
-            if (changeSpeed && !isNaN(speedValue)) {
-                if (wp.getAction() == MWNP.WPTYPE.WAYPOINT) {
-                    wp.setP1(speedValue);
-                } else if (wp.getAction() == MWNP.WPTYPE.POSHOLD_TIME) {
-                    wp.setP2(speedValue);
-                }
-            }
-            // An altitude converted against a ground level can land under it, which flies
-            // the mission into the terrain, so it is counted and reported rather than fixed.
-            if (reference) {
-                const clearance = missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE)
-                    ? wp.getAlt() - reference.groundCm[index]
-                    : wp.getAlt();
-                if (clearance < 0) belowGround++;
-            }
+            // Converting can leave a waypoint under the terrain, which would fly the
+            // mission into the ground, so it is reported rather than silently corrected.
+            const clearance = toAbsolute ? wp.getAlt() - groundCm : wp.getAlt();
+            if (clearance < 0) belowGround++;
             mission.updateWaypoint(wp);
         });
 
-        const applied = [];
-        if (changeAlt) applied.push(i18n.getMessage('missionApplyAltShort'));
-        if (changeSpeed) applied.push(i18n.getMessage('missionApplySpeedShort'));
-        if (changeSlr) applied.push(i18n.getMessage('missionApplySlrShort'));
-
+        seaLevelSwitchOnOpen = toAbsolute;
         mission.update(singleMissionActive());
         syncEditPanelWithSelection();
         redrawLayer();
         plotElevation();
-        $('.mpApplyEnable').prop('checked', false);
+        $('#MPapplySlrSaved').show();
 
-        const via = reference
-            ? ' ' + i18n.getMessage(reference.kind === 'home' ? 'missionApplyViaHome' : 'missionApplyViaTerrain')
-            : '';
-        const warning = belowGround
-            ? ' ' + i18n.getMessage('missionApplyBelowGround', [String(belowGround)])
-            : '';
-        setApplyStatus(i18n.getMessage('missionApplySaved', [String(targets.length), applied.join(', ')]) + via + warning, Boolean(belowGround));
-        return true;
+        GUI.log(i18n.getMessage(reference.kind === 'home' ? 'missionApplyViaHome' : 'missionApplyViaTerrain',
+                                [String(waypoints.length)]));
+        if (belowGround) {
+            GUI.log(i18n.getMessage('missionApplyBelowGround', [String(belowGround)]));
+        }
     }
 
     function renderSafeHomeOptions()  {
@@ -3042,6 +3011,7 @@ function iconKey(filename) {
                 
 
                 var handleShowSettings = function () {
+                    refreshSeaLevelSwitch();
                     $('#missionPlannerSettings').fadeIn(300);
                 };
 
@@ -3847,19 +3817,6 @@ function iconKey(filename) {
         $('#wpListNext').on('click', function (event) {
             event.preventDefault();
             stepWaypointSelection(1);
-        });
-
-        // Touching a value marks it, so saving writes only what was actually edited
-        $('#MPdefaultPointAlt, #MPapplyAltMode').on('input change', function () {
-            $('#MPapplyAlt').prop('checked', true);
-        });
-
-        $('#MPdefaultPointSpeed').on('input change', function () {
-            $('#MPapplySpeed').prop('checked', true);
-        });
-
-        $('#MPapplySlrValue').on('change', function () {
-            $('#MPapplySlr').prop('checked', true);
         });
 
         $('#pointP3Alt').on('change', function (event) {
@@ -4917,18 +4874,20 @@ function iconKey(filename) {
                 $('#SafeHomeSafeDistance').text(settings.safeRadiusSH);
             }
 
-            // The box stays open on save so the result can be read and further
-            // changes made; the cancel button is what closes it.
-            if (!await applyMissionParameters()) {
-                setApplyStatus(i18n.getMessage('missionApplyDefaultsSaved'), false);
-            }
+            // The box stays open on save so the tick next to the switch is visible;
+            // the cancel button is what closes it.
+            await applySeaLevelReference();
         });
 
         $('#cancelSettings').on('click', function () {
-            $('.mpApplyEnable').prop('checked', false);
-            setApplyStatus('', false);
             loadSettings();
+            refreshSeaLevelSwitch();
             closeSettingsPanel();
+        });
+
+        // Moving the switch clears the tick of the previous save
+        $('#MPapplySlrValue').on('change', function () {
+            $('#MPapplySlrSaved').hide();
         });
 
         updateTotalInfo();
