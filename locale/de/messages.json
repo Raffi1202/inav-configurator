@@ -5004,16 +5004,10 @@
         "message": "$1 Wegpunkte in der Mission"
     },
     "missionApplyHead": {
-        "message": "Auf Wegpunkte anwenden"
+        "message": "Auf alle Wegpunkte anwenden"
     },
-    "missionApplyTarget": {
-        "message": "Anwenden auf:"
-    },
-    "missionApplyTargetAll": {
-        "message": "Alle Wegpunkte"
-    },
-    "missionApplyTargetSingle": {
-        "message": "Gew\u00e4hlten Wegpunkt"
+    "missionApplyDefaultsSaved": {
+        "message": "Standardwerte gespeichert"
     },
     "missionApplyAlt": {
         "message": "H\u00f6he von oben"
@@ -5033,8 +5027,8 @@
     "missionApplySaved": {
         "message": "Auf $1 Wegpunkt(en) gespeichert: $2"
     },
-    "missionApplyNoTarget": {
-        "message": "Kein Wegpunkt gew\u00e4hlt"
+    "missionApplyNoWaypoints": {
+        "message": "Die Mission enth\u00e4lt keine Wegpunkte"
     },
     "missionApplyWorking": {
         "message": "Gel\u00e4ndeh\u00f6hen werden abgefragt..."

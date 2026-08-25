@@ -5011,16 +5011,10 @@
         "message": "$1 waypoints in the mission"
     },
     "missionApplyHead": {
-        "message": "Apply to waypoints"
+        "message": "Apply to all waypoints"
     },
-    "missionApplyTarget": {
-        "message": "Apply to:"
-    },
-    "missionApplyTargetAll": {
-        "message": "All waypoints"
-    },
-    "missionApplyTargetSingle": {
-        "message": "Selected waypoint"
+    "missionApplyDefaultsSaved": {
+        "message": "Defaults saved"
     },
     "missionApplyAlt": {
         "message": "Altitude above"
@@ -5040,8 +5034,8 @@
     "missionApplySaved": {
         "message": "Saved on $1 waypoint(s): $2"
     },
-    "missionApplyNoTarget": {
-        "message": "No waypoint selected"
+    "missionApplyNoWaypoints": {
+        "message": "The mission has no waypoints"
     },
     "missionApplyWorking": {
         "message": "Reading elevations..."

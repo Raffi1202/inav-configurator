@@ -2658,12 +2658,12 @@ function iconKey(filename) {
         const changeSlr = $('#MPapplySlr').prop('checked');
         if (!changeAlt && !changeSpeed && !changeSlr) return false;
 
-        const targets = $('#MPapplyTarget').val() === 'single'
-            ? (selectedMarker ? [selectedMarker] : [])
-            : wpListSelectableWaypoints();
+        // These are the mission defaults, so they always cover the whole mission.
+        // A single waypoint is edited in the point editor instead.
+        const targets = wpListSelectableWaypoints();
 
         if (!targets.length) {
-            setApplyStatus(i18n.getMessage('missionApplyNoTarget'), true);
+            setApplyStatus(i18n.getMessage('missionApplyNoWaypoints'), true);
             return true;
         }
 
@@ -4917,9 +4917,10 @@ function iconKey(filename) {
                 $('#SafeHomeSafeDistance').text(settings.safeRadiusSH);
             }
 
-            // Stay open when waypoints were touched so the result stays readable
+            // The box stays open on save so the result can be read and further
+            // changes made; the cancel button is what closes it.
             if (!await applyMissionParameters()) {
-                closeSettingsPanel();
+                setApplyStatus(i18n.getMessage('missionApplyDefaultsSaved'), false);
             }
         });
 
