@@ -417,6 +417,57 @@
                     </div>
                 </div>
 
+                <div id="missionPlannerWpList" class="gui_box grey">
+                    <div class="gui_box_titlebar">
+                        <div class="spacer_box_title" data-i18n="missionWpListHead"></div>
+                        <div class="btnMenu btnMenuIcon show_btn" id="showHideWpListButton">
+                            <a class="ic_hide" href="#" i18n_title="missionTitleHide"></a>
+                        </div>
+                    </div>
+                    <div class="spacer" id="wpListContent">
+                        <div class="point">
+                            <label class="point-label" for="wpListSelect" data-i18n="missionWpListSelect"></label>
+                            <select id="wpListSelect"></select>
+                            <a id="wpListPrev" class="wpListNavBtn" href="#" i18n_title="missionWpListPrev">&#9664;</a>
+                            <a id="wpListNext" class="wpListNavBtn" href="#" i18n_title="missionWpListNext">&#9654;</a>
+                        </div>
+                        <div class="wpListCount" id="wpListCount"></div>
+                        <hr>
+                        <div class="point">
+                            <label class="point-label" for="wpListTarget" data-i18n="missionWpListTarget"></label>
+                            <select id="wpListTarget">
+                                <option value="single" data-i18n="missionWpListTargetSingle"></option>
+                                <option value="all" data-i18n="missionWpListTargetAll"></option>
+                            </select>
+                        </div>
+                        <div class="point">
+                            <input id="wpListAltEnable" class="wpListParamEnable" type="checkbox">
+                            <label class="point-label wpListParamLabel" for="wpListAltValue" data-i18n="missionWpListAlt"></label>
+                            <select id="wpListAltMode">
+                                <option value="set" data-i18n="missionWpListBulkSet"></option>
+                                <option value="add" data-i18n="missionWpListBulkAdd"></option>
+                            </select>
+                            <input id="wpListAltValue" type="number" value="0">
+                        </div>
+                        <div class="point">
+                            <input id="wpListSpeedEnable" class="wpListParamEnable" type="checkbox">
+                            <label class="point-label wpListParamLabel" for="wpListSpeedValue" data-i18n="missionWpListBulkSpeed"></label>
+                            <input id="wpListSpeedValue" type="number" value="0">
+                        </div>
+                        <div class="point">
+                            <input id="wpListSlrEnable" class="wpListParamEnable" type="checkbox">
+                            <label class="point-label wpListParamLabel" for="wpListSlr" data-i18n="missionSeaLevelRef"></label>
+                            <input id="wpListSlr" type="checkbox" value="0" class="togglemedium">
+                        </div>
+                        <div id="wpListSlrHint" class="wpListHint" data-i18n="missionWpListNoHome" style="display: none"></div>
+                        <div class="wpListActions">
+                            <a id="wpListApply" class="wpListApplyBtn" href="#" data-i18n="missionWpListSave"></a>
+                            <a id="wpListReset" class="wpListResetBtn" href="#" data-i18n="missionWpListReset"></a>
+                        </div>
+                        <div id="wpListStatus" class="wpListStatus"></div>
+                    </div>
+                </div>
+
                 <div class="gui_box grey" id="MPeditPoint" style="display: none">
                     <div class="gui_box_titlebar">
                         <div class="spacer_box_title" data-i18n="editPointHead" id="EditPointNumber"></div>
@@ -615,49 +666,6 @@
                 <div id="missionMap3D">
                     <div id="missionMap3DWarning" role="alert" aria-live="polite"></div>
                     <div id="missionMap3DHelp" data-i18n="missionMap3DEmpty"></div>
-                </div>
-                <div id="missionPlannerWpList" class="gui_box grey" style="display: none">
-                    <div class="gui_box_titlebar">
-                        <div class="spacer_box_title" data-i18n="missionWpListHead"></div>
-                        <div class="btnMenu btnMenuIcon  save_btn">
-                            <a id="cancelWpList" class="ic_cancel" href="#" i18n_title="missionTitleCancel"></a>
-                        </div>
-                    </div>
-                    <div class="spacer">
-                        <div class="wpListBulkBar">
-                            <span data-i18n="missionWpListBulkAlt"></span>
-                            <select id="wpListBulkAltMode">
-                                <option value="set" data-i18n="missionWpListBulkSet"></option>
-                                <option value="add" data-i18n="missionWpListBulkAdd"></option>
-                            </select>
-                            <input id="wpListBulkAltValue" type="number" value="0">
-                            <a id="wpListBulkAltApply" class="wpListApplyBtn" href="#" data-i18n="missionWpListApply"></a>
-                            <span class="wpListBulkSeparator"></span>
-                            <span data-i18n="missionWpListBulkSpeed"></span>
-                            <input id="wpListBulkSpeedValue" type="number" value="0">
-                            <a id="wpListBulkSpeedApply" class="wpListApplyBtn" href="#" data-i18n="missionWpListApply"></a>
-                        </div>
-                        <div class="wpListTableWrapper">
-                            <table class="waypointListTable">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 40px">#</th>
-                                        <th class="wpListMissionColumn" style="width: 40px" data-i18n="missionWpListMission"></th>
-                                        <th style="width: 110px" data-i18n="missionWpListType"></th>
-                                        <th data-i18n="missionWpListLat"></th>
-                                        <th data-i18n="missionWpListLon"></th>
-                                        <th data-i18n="missionWpListAlt"></th>
-                                        <th data-i18n="missionWpListP1"></th>
-                                        <th data-i18n="missionWpListP2"></th>
-                                        <th style="width: 40px" data-i18n="missionWpListSlr" i18n_title="missionSeaLevelRef"></th>
-                                        <th style="width: 40px">&nbsp;</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="waypointListTableBody">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div>
             </div>
             <div id="missionPlannerElevation" class="gui_box grey" style="display: none">

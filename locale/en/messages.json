@@ -4996,37 +4996,34 @@
         "message": "Sea level Ref: "
     },
     "missionWpListHead": {
-        "message": "Waypoint List"
+        "message": "Waypoints"
     },
-    "missionWpListMission": {
-        "message": "M#"
+    "missionWpListSelect": {
+        "message": "Waypoint:"
     },
-    "missionWpListType": {
-        "message": "Type"
+    "missionWpListPrev": {
+        "message": "Previous waypoint"
     },
-    "missionWpListLat": {
-        "message": "Lat"
+    "missionWpListNext": {
+        "message": "Next waypoint"
     },
-    "missionWpListLon": {
-        "message": "Lon"
+    "missionWpListCount": {
+        "message": "$1 waypoints in the mission"
+    },
+    "missionWpListTarget": {
+        "message": "Change:"
+    },
+    "missionWpListTargetSingle": {
+        "message": "Selected waypoint"
+    },
+    "missionWpListTargetAll": {
+        "message": "All waypoints"
     },
     "missionWpListAlt": {
-        "message": "Alt (cm)"
-    },
-    "missionWpListP1": {
-        "message": "P1 / Speed"
-    },
-    "missionWpListP2": {
-        "message": "P2"
-    },
-    "missionWpListSlr": {
-        "message": "SLR"
-    },
-    "missionWpListBulkAlt": {
-        "message": "Altitude (cm) for all:"
+        "message": "Altitude (cm)"
     },
     "missionWpListBulkSpeed": {
-        "message": "Speed (cm/s) for all:"
+        "message": "Speed (cm/s)"
     },
     "missionWpListBulkSet": {
         "message": "Set"
@@ -5034,8 +5031,32 @@
     "missionWpListBulkAdd": {
         "message": "Add"
     },
-    "missionWpListApply": {
-        "message": "Apply"
+    "missionWpListSave": {
+        "message": "Save"
+    },
+    "missionWpListReset": {
+        "message": "Discard"
+    },
+    "missionWpListSaved": {
+        "message": "Saved on $1 waypoint(s): $2"
+    },
+    "missionWpListNothing": {
+        "message": "Nothing ticked, nothing saved"
+    },
+    "missionWpListNoTarget": {
+        "message": "No waypoint selected"
+    },
+    "missionWpListNoHome": {
+        "message": "Home elevation unknown, sea level conversion unavailable"
+    },
+    "missionWpListAltShort": {
+        "message": "altitude"
+    },
+    "missionWpListSpeedShort": {
+        "message": "speed"
+    },
+    "missionWpListSlrShort": {
+        "message": "sea level reference"
     },
     "missionElevation": {
         "message": "Elevation (m):"

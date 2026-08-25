@@ -4989,37 +4989,34 @@
         "message": "Meeresspiegel-Ref.: "
     },
     "missionWpListHead": {
-        "message": "Wegpunkt-Liste"
+        "message": "Wegpunkte"
     },
-    "missionWpListMission": {
-        "message": "M#"
+    "missionWpListSelect": {
+        "message": "Wegpunkt:"
     },
-    "missionWpListType": {
-        "message": "Typ"
+    "missionWpListPrev": {
+        "message": "Vorheriger Wegpunkt"
     },
-    "missionWpListLat": {
-        "message": "Lat"
+    "missionWpListNext": {
+        "message": "N\u00e4chster Wegpunkt"
     },
-    "missionWpListLon": {
-        "message": "Lon"
+    "missionWpListCount": {
+        "message": "$1 Wegpunkte in der Mission"
+    },
+    "missionWpListTarget": {
+        "message": "\u00c4ndern:"
+    },
+    "missionWpListTargetSingle": {
+        "message": "Gew\u00e4hlter Wegpunkt"
+    },
+    "missionWpListTargetAll": {
+        "message": "Alle Wegpunkte"
     },
     "missionWpListAlt": {
-        "message": "Höhe (cm)"
-    },
-    "missionWpListP1": {
-        "message": "P1 / Speed"
-    },
-    "missionWpListP2": {
-        "message": "P2"
-    },
-    "missionWpListSlr": {
-        "message": "MSR"
-    },
-    "missionWpListBulkAlt": {
-        "message": "Höhe (cm) für alle:"
+        "message": "H\u00f6he (cm)"
     },
     "missionWpListBulkSpeed": {
-        "message": "Speed (cm/s) für alle:"
+        "message": "Speed (cm/s)"
     },
     "missionWpListBulkSet": {
         "message": "Setzen"
@@ -5027,8 +5024,32 @@
     "missionWpListBulkAdd": {
         "message": "Addieren"
     },
-    "missionWpListApply": {
-        "message": "Anwenden"
+    "missionWpListSave": {
+        "message": "Speichern"
+    },
+    "missionWpListReset": {
+        "message": "Verwerfen"
+    },
+    "missionWpListSaved": {
+        "message": "Auf $1 Wegpunkt(en) gespeichert: $2"
+    },
+    "missionWpListNothing": {
+        "message": "Nichts angehakt, nichts gespeichert"
+    },
+    "missionWpListNoTarget": {
+        "message": "Kein Wegpunkt gew\u00e4hlt"
+    },
+    "missionWpListNoHome": {
+        "message": "H\u00f6he von Home unbekannt, Umrechnung auf Meeresspiegel nicht m\u00f6glich"
+    },
+    "missionWpListAltShort": {
+        "message": "H\u00f6he"
+    },
+    "missionWpListSpeedShort": {
+        "message": "Speed"
+    },
+    "missionWpListSlrShort": {
+        "message": "Meeresspiegel-Referenz"
     },
     "missionElevation": {
         "message": "Geländehöhe (m):"

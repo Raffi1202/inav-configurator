@@ -144,8 +144,7 @@ const iconNames = [
     'icon_safehome_white.svg',
     'icon_geozone_white.svg',
     'icon_elevation_white.svg',
-    'icon_multimission_white.svg',
-    'icon_wp_list_white.svg'
+    'icon_multimission_white.svg'
 ];
 
 const icons = Object.create(null)
@@ -2421,7 +2420,7 @@ function iconKey(filename) {
 
         }
 
-        renderWaypointListTable();
+        renderWaypointSelect();
 
         if (!isOffline) geozoneWarning();
     }
@@ -2431,16 +2430,14 @@ function iconKey(filename) {
         if (selectedFeature && selectedMarker) {
             selectedFeature.setStyle(getWaypointIcon(selectedMarker, true));
         }
-        renderWaypointListTable();
+        renderWaypointSelect();
     }
 
     /////////////////////////////////////////////
     //
-    // Waypoint list table
+    // Waypoint selector panel
     //
     /////////////////////////////////////////////
-
-    var waypointListNeedsRefresh = false;
 
     function convertCentimetersToMeters(val) {
         return parseInt(val) / 100;
@@ -2531,6 +2528,7 @@ function iconKey(filename) {
         $('#MPeditPoint').fadeIn(300);
         $('#pointP3UserActionClass').fadeIn();
         redrawLayer();
+        loadWpListFields();
     }
 
     function selectWaypointFromList(wpNumber) {
@@ -2545,87 +2543,148 @@ function iconKey(filename) {
         map.getView().animate({center: fromLonLat([selectedMarker.getLonMap(), selectedMarker.getLatMap()]), duration: 200});
     }
 
-    function isWaypointListEditing() {
-        return document.activeElement && $(document.activeElement).closest('#waypointListTableBody').length > 0;
+    function wpListSelectableWaypoints() {
+        return mission.get().filter(wp => !wp.isAttached());
     }
 
-    function renderWaypointListTable() {
-        if (!$('#missionPlannerWpList').is(':visible')) return;
+    function wpListLabel(wp) {
+        const typeNames = {1: 'Waypoint', 2: 'PH_UNLIM', 3: 'PH_TIME', 4: 'RTH', 5: 'POI', 6: 'JUMP', 7: 'HEAD', 8: 'Land'};
+        const type = typeNames[wp.getAction()] || ('Type ' + wp.getAction());
+        return (wp.getLayerNumber() + 1) + ' \u00b7 ' + type + ' \u00b7 ' + convertCentimetersToMeters(wp.getAlt()) + ' m';
+    }
 
-        if (isWaypointListEditing()) {
-            waypointListNeedsRefresh = true;
+    function renderWaypointSelect() {
+        const $select = $('#wpListSelect');
+        if (!$select.length) return;
+
+        const waypoints = wpListSelectableWaypoints();
+        const previous = selectedMarker ? String(selectedMarker.getNumber()) : String($select.val());
+
+        $select.empty();
+        waypoints.forEach(function (wp) {
+            $select.append($('<option>').val(String(wp.getNumber())).text(wpListLabel(wp)));
+        });
+        if (waypoints.some(wp => String(wp.getNumber()) === previous)) {
+            $select.val(previous);
+        }
+
+        $('#wpListCount').text(i18n.getMessage('missionWpListCount', [String(waypoints.length)]));
+        $select.prop('disabled', waypoints.length === 0);
+        $('#wpListPrev, #wpListNext').toggleClass('disabled', waypoints.length === 0);
+        updateWpListHomeHint();
+    }
+
+    /* A relative waypoint altitude is measured from home, so converting a whole mission
+       between relative and sea level needs the home elevation only - no per waypoint lookup. */
+    function wpListHomeElevationCm() {
+        if (!homeMarkers.length) return null;
+        const elevation = Number(HOME.getAlt());
+        return isNaN(elevation) ? null : elevation * 100;
+    }
+
+    function updateWpListHomeHint() {
+        const available = wpListHomeElevationCm() !== null;
+        $('#wpListSlr').prop('disabled', !available);
+        $('#wpListSlrEnable').prop('disabled', !available);
+        $('#wpListSlrHint').toggle(!available);
+        if (!available) {
+            $('#wpListSlrEnable').prop('checked', false);
+        }
+    }
+
+    function loadWpListFields() {
+        if (selectedMarker) {
+            $('#wpListAltValue').val(selectedMarker.getAlt());
+            $('#wpListSpeedValue').val(selectedMarker.getAction() == MWNP.WPTYPE.POSHOLD_TIME ? selectedMarker.getP2() : selectedMarker.getP1());
+            changeSwitch($('#wpListSlr'), missionControlTab.isBitSet(selectedMarker.getP3(), MWNP.P3.ALT_TYPE));
+        }
+        $('.wpListParamEnable').prop('checked', false);
+        updateWpListHomeHint();
+    }
+
+    function setWpListStatus(message, isError) {
+        $('#wpListStatus').text(message).toggleClass('wpListStatusError', Boolean(isError));
+    }
+
+    /* Push values a save may have altered back into the single point panel directly:
+       re-selecting the waypoint would start another elevation lookup. */
+    function syncEditPanelWithSelection() {
+        if (!selectedMarker) return;
+        $('#pointAlt').val(selectedMarker.getAlt());
+        $('#altitudeInMeters').text(' ' + convertCentimetersToMeters(selectedMarker.getAlt()) + 'm');
+        $('#pointP1').val(selectedMarker.getP1());
+        $('#pointP2').val(selectedMarker.getP2());
+        changeSwitch($('#pointP3Alt'), missionControlTab.isBitSet(selectedMarker.getP3(), MWNP.P3.ALT_TYPE));
+    }
+
+    function stepWaypointSelection(offset) {
+        const waypoints = wpListSelectableWaypoints();
+        if (!waypoints.length) return;
+        const current = waypoints.findIndex(wp => selectedMarker && wp.getNumber() == selectedMarker.getNumber());
+        const next = current < 0 ? 0 : (current + offset + waypoints.length) % waypoints.length;
+        selectWaypointFromList(waypoints[next].getNumber());
+    }
+
+    /* Nothing is written while the fields are edited. Only the ticked parameters are
+       applied, and only when the user saves, so no value changes by accident. */
+    function wpListApplyChanges() {
+        if (disableMarkerEdit) return;
+
+        const targets = $('#wpListTarget').val() === 'all'
+            ? wpListSelectableWaypoints()
+            : (selectedMarker ? [selectedMarker] : []);
+
+        if (!targets.length) {
+            setWpListStatus(i18n.getMessage('missionWpListNoTarget'), true);
             return;
         }
-        waypointListNeedsRefresh = false;
 
-        const $body = $('#waypointListTableBody');
-        $body.empty();
+        const homeElevationCm = wpListHomeElevationCm();
+        const changeAlt = $('#wpListAltEnable').prop('checked');
+        const changeSpeed = $('#wpListSpeedEnable').prop('checked');
+        const changeSlr = $('#wpListSlrEnable').prop('checked') && homeElevationCm !== null;
 
-        const showMissionColumn = multimissionCount > 0 && !singleMissionActive();
+        if (!changeAlt && !changeSpeed && !changeSlr) {
+            setWpListStatus(i18n.getMessage('missionWpListNothing'), true);
+            return;
+        }
 
-        const wpTypeOptions = {1: 'Waypoint', 3: 'PH_TIME', 5: 'POI', 8: 'Land'};
+        const altValue = Number($('#wpListAltValue').val());
+        const speedValue = Number($('#wpListSpeedValue').val());
+        const addAltitude = $('#wpListAltMode').val() === 'add';
+        const toAbsolute = $('#wpListSlr').prop('checked');
 
-        mission.get().forEach(function (wp) {
-            if (wp.isAttached()) return;
-
-            const action = wp.getAction();
-            const paramLabels = dictOfLabelParameterPoint[action] || {parameter1: '', parameter2: ''};
-            const isSelected = selectedMarker != null && wp.getNumber() == selectedMarker.getNumber();
-
-            let typeOptionsHtml = '';
-            for (const value in wpTypeOptions) {
-                typeOptionsHtml += `<option value="${value}"${Number(value) == action ? ' selected' : ''}>${wpTypeOptions[value]}</option>`;
+        targets.forEach(function (wp) {
+            // The reference switch runs first so an altitude entered below is read
+            // in the reference the user just picked.
+            if (changeSlr && missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE) != toAbsolute) {
+                wp.setP3(missionControlTab.setBit(wp.getP3(), MWNP.P3.ALT_TYPE, toAbsolute));
+                wp.setAlt(wp.getAlt() + (toAbsolute ? homeElevationCm : -homeElevationCm));
             }
-            if (!(action in wpTypeOptions)) {
-                typeOptionsHtml += `<option value="${action}" selected>Type ${action}</option>`;
+            if (changeAlt && !isNaN(altValue) && wp.getAction() != MWNP.WPTYPE.SET_POI) {
+                wp.setAlt(addAltitude ? wp.getAlt() + altValue : altValue);
             }
-
-            const $row = $(`
-                <tr data-wp-number="${wp.getNumber()}" class="${isSelected ? 'wpListRowSelected' : ''}">
-                    <td class="wpListSelectCell">${wp.getLayerNumber() + 1}</td>
-                    <td class="wpListMissionColumn">${wp.getMultiMissionIdx() + 1}</td>
-                    <td><select class="wpListField" data-field="type">${typeOptionsHtml}</select></td>
-                    <td><input type="text" class="wpListField" data-field="lat" value="${wp.getLatMap()}"></td>
-                    <td><input type="text" class="wpListField" data-field="lon" value="${wp.getLonMap()}"></td>
-                    <td class="wpListAltCell"><input type="text" class="wpListField" data-field="alt" value="${wp.getAlt()}"><span class="wpListAltMeters">${convertCentimetersToMeters(wp.getAlt())}m</span></td>
-                    <td><input type="text" class="wpListField" data-field="p1" value="${wp.getP1()}" title="${paramLabels.parameter1}" ${paramLabels.parameter1 == '' ? 'disabled' : ''}></td>
-                    <td><input type="text" class="wpListField" data-field="p2" value="${wp.getP2()}" title="${paramLabels.parameter2}" ${paramLabels.parameter2 == '' ? 'disabled' : ''}></td>
-                    <td>${missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE) ? '&#10003;' : ''}</td>
-                    <td>
-                        <div class="btn btnTable btnTableIcon btnTable-danger">
-                            <a class="ic_removeAll wpListRemoveButton" href="#" title="Remove"></a>
-                        </div>
-                    </td>
-                </tr>
-            `);
-
-            $body.append($row);
+            if (changeSpeed && !isNaN(speedValue)) {
+                if (wp.getAction() == MWNP.WPTYPE.WAYPOINT) {
+                    wp.setP1(speedValue);
+                } else if (wp.getAction() == MWNP.WPTYPE.POSHOLD_TIME) {
+                    wp.setP2(speedValue);
+                }
+            }
+            mission.updateWaypoint(wp);
         });
 
-        $('.wpListMissionColumn').toggle(showMissionColumn);
-    }
+        const saved = [];
+        if (changeAlt) saved.push(i18n.getMessage('missionWpListAltShort'));
+        if (changeSpeed) saved.push(i18n.getMessage('missionWpListSpeedShort'));
+        if (changeSlr) saved.push(i18n.getMessage('missionWpListSlrShort'));
 
-    function getWaypointFromListRow(element) {
-        const wpNumber = Number($(element).closest('tr').data('wpNumber'));
-        return mission.getWaypoint(wpNumber);
-    }
-
-    function refreshAfterListEdit(wp, geometryChanged) {
-        mission.updateWaypoint(wp);
         mission.update(singleMissionActive());
-        if (geometryChanged) {
-            refreshLayers();
-            if (selectedMarker) {
-                selectedFeature = markers[selectedMarker.getLayerNumber()].getSource().getFeatures()[0];
-                selectedFeature.setStyle(getWaypointIcon(selectedMarker, true));
-            }
-        } else {
-            redrawLayer();
-        }
-        // keep the single point edit panel in sync when its waypoint was edited from the list
-        if (selectedMarker && wp.getNumber() == selectedMarker.getNumber()) {
-            selectWaypointMarkerByNumber(wp.getNumber(), selectedMarker.getLayerNumber());
-        }
+        syncEditPanelWithSelection();
+        redrawLayer();
+        plotElevation();
+        loadWpListFields();
+        setWpListStatus(i18n.getMessage('missionWpListSaved', [String(targets.length), saved.join(', ')]), false);
     }
 
     function renderSafeHomeOptions()  {
@@ -3080,39 +3139,6 @@ function iconKey(filename) {
             }
         };
 
-        class PlannerWaypointListControl extends Control {
-
-            constructor(opt_options) {
-                var options = opt_options || {};
-                var button = document.createElement('button');
-
-                button.innerHTML = ' ';
-                button.style = `background: url("${icons['icon_wp_list_white']}") no-repeat 1px -1px;background-color: rgba(0,60,136,.5);`;
-
-                var handleShowWpList = function () {
-                    if ($('#missionPlannerWpList').is(':visible')) {
-                        $('#missionPlannerWpList').fadeOut(300);
-                    } else {
-                        $('#missionPlannerWpList').fadeIn(300);
-                        renderWaypointListTable();
-                    }
-                };
-
-                button.addEventListener('click', handleShowWpList, false);
-                button.addEventListener('touchstart', handleShowWpList, false);
-
-                var element = document.createElement('div');
-                element.className = 'mission-control-wplist ol-unselectable ol-control';
-                element.appendChild(button);
-                element.title = 'Waypoint list';
-
-                super({
-                    element: element,
-                    target: options.target
-                });
-            }
-        };
-
         /**
          * @param {ol.MapBrowserEvent} evt Map browser event.
          * @return {boolean} `true` to start the drag sequence.
@@ -3243,7 +3269,7 @@ function iconKey(filename) {
          */
         app.handleUpEvent = function (evt) {
             if (tempMarker.kind == "waypoint") {
-                renderWaypointListTable();
+                renderWaypointSelect();
                 if (selectedMarker != null && tempMarker.number == selectedMarker.getLayerNumber()) {
                     (async () => {
                         const elevationAtWP = await mission.getWaypoint(tempMarker.number).getElevation(globalSettings);
@@ -3347,7 +3373,6 @@ function iconKey(filename) {
                 new PlannerMultiMissionControl(),
                 new PlannerSafehomeControl(),
                 new PlannerElevationControl(),
-                new PlannerWaypointListControl(),
             ]
 
             if (isGeozoneEnabeld) {
@@ -3359,7 +3384,6 @@ function iconKey(filename) {
                 new PlannerSettingsControl(),
                 new PlannerMultiMissionControl(),
                 new PlannerElevationControl(),
-                new PlannerWaypointListControl(),
                 //new app.PlannerSafehomeControl() // TO COMMENT FOR RELEASE : DECOMMENT FOR DEBUG
             ]
         }
@@ -3384,8 +3408,7 @@ function iconKey(filename) {
 
         // Slot the 2D/3D toggle into the control column right below the bottom-most planner control,
         // matching the 25px grid of the buttons above (settings 65px ... safehome 140px, geozones 190px)
-        $('.mission-control-wplist').css('top', `${CONFIGURATOR.connectionValid ? 165 : 140}px`);
-        $('#missionMapViewControls').css('top', `${CONFIGURATOR.connectionValid ? (isGeozoneEnabeld ? 215 : 190) : 165}px`);
+        $('#missionMapViewControls').css('top', `${CONFIGURATOR.connectionValid ? (isGeozoneEnabeld ? 215 : 165) : 140}px`);
         $('#missionMap2DButton').on('click', () => setMissionMapViewMode('2d'));
         $('#missionMap3DButton').on('click', () => setMissionMapViewMode('3d'));
         setMissionMapViewMode(missionMapViewMode);
@@ -3660,6 +3683,10 @@ function iconKey(filename) {
         setupShowHidePanel('showHideWPeditButton',      'WPeditContent');
         setupShowHidePanel('showHideMultimissionButton','multimissionContent');
         setupShowHidePanel('showHideGeozonesButton',    'geozoneContent');
+        setupShowHidePanel('showHideWpListButton',      'wpListContent');
+
+        renderWaypointSelect();
+        loadWpListFields();
 
         /////////////////////////////////////////////
         // Callback for Waypoint edition
@@ -3757,134 +3784,49 @@ function iconKey(filename) {
         });
 
         /////////////////////////////////////////////
-        // Callback for Waypoint list table
+        // Callback for the waypoint selector panel
         /////////////////////////////////////////////
-        $('#cancelWpList').on('click', function () {
-            $('#missionPlannerWpList').fadeOut(300);
-        });
-
-        $('#waypointListTableBody').on('change', '.wpListField', function (event) {
-            const wp = getWaypointFromListRow(this);
-            if (!wp || disableMarkerEdit) {
-                renderWaypointListTable();
-                return;
-            }
-
-            const field = $(this).data('field');
-            const value = $(this).val();
-
-            switch (field) {
-                case 'type': {
-                    const newAction = Number(value);
-                    if (newAction == MWNP.WPTYPE.LAND) {
-                        let found = false;
-                        mission.get().forEach(otherWp => {
-                            if (otherWp.getAction() == MWNP.WPTYPE.LAND && otherWp.getNumber() != wp.getNumber()) {
-                                found = true;
-                            }
-                        });
-                        if (found) {
-                            dialog.alert(i18n.getMessage('MissionPlannerOnlyOneLandWp'));
-                            $(this).val(wp.getAction());
-                            return;
-                        }
-                    }
-                    wp.setAction(newAction);
-                    if ([MWNP.WPTYPE.SET_POI, MWNP.WPTYPE.POSHOLD_TIME, MWNP.WPTYPE.LAND].includes(newAction)) {
-                        wp.setP1(0.0);
-                        wp.setP2(0.0);
-                    }
-                    refreshAfterListEdit(wp, true);
-                    break;
-                }
-                case 'lat':
-                    wp.setLat(Math.round(Number(value) * 10000000));
-                    refreshAfterListEdit(wp, true);
-                    plotElevation();
-                    break;
-                case 'lon':
-                    wp.setLon(Math.round(Number(value) * 10000000));
-                    refreshAfterListEdit(wp, true);
-                    plotElevation();
-                    break;
-                case 'alt':
-                    wp.setAlt(Number(value));
-                    refreshAfterListEdit(wp, false);
-                    plotElevation();
-                    break;
-                case 'p1':
-                    wp.setP1(Number(value));
-                    refreshAfterListEdit(wp, false);
-                    break;
-                case 'p2':
-                    wp.setP2(Number(value));
-                    refreshAfterListEdit(wp, false);
-                    break;
+        $('#wpListSelect').on('change', function () {
+            const wpNumber = Number($(this).val());
+            if (!isNaN(wpNumber) && mission.getWaypoint(wpNumber)) {
+                selectWaypointFromList(wpNumber);
             }
         });
 
-        $('#waypointListTableBody').on('focusout', '.wpListField', function () {
-            setTimeout(function () {
-                if (waypointListNeedsRefresh && !isWaypointListEditing()) {
-                    renderWaypointListTable();
-                }
-            }, 0);
-        });
-
-        $('#waypointListTableBody').on('click', '.wpListSelectCell', function () {
-            const wp = getWaypointFromListRow(this);
-            if (wp) {
-                selectWaypointFromList(wp.getNumber());
-            }
-        });
-
-        $('#waypointListTableBody').on('click', '.wpListRemoveButton', function (event) {
+        $('#wpListPrev').on('click', function (event) {
             event.preventDefault();
-            const wp = getWaypointFromListRow(this);
-            if (wp && !disableMarkerEdit) {
-                selectWaypointFromList(wp.getNumber());
-                $('#removePoint').trigger('click');
+            stepWaypointSelection(-1);
+        });
+
+        $('#wpListNext').on('click', function (event) {
+            event.preventDefault();
+            stepWaypointSelection(1);
+        });
+
+        // Touching a value marks it, so saving writes only what was actually edited
+        $('#wpListAltValue, #wpListAltMode').on('input change', function () {
+            $('#wpListAltEnable').prop('checked', true);
+        });
+
+        $('#wpListSpeedValue').on('input change', function () {
+            $('#wpListSpeedEnable').prop('checked', true);
+        });
+
+        $('#wpListSlr').on('change', function () {
+            if (!$(this).prop('disabled')) {
+                $('#wpListSlrEnable').prop('checked', true);
             }
         });
 
-        $('#wpListBulkAltApply').on('click', function (event) {
+        $('#wpListApply').on('click', function (event) {
             event.preventDefault();
-            const value = Number($('#wpListBulkAltValue').val());
-            if (isNaN(value) || disableMarkerEdit) return;
-            const add = $('#wpListBulkAltMode').val() == 'add';
-            mission.get().forEach(wp => {
-                if (wp.isAttached() || wp.getAction() == MWNP.WPTYPE.SET_POI) return;
-                wp.setAlt(add ? wp.getAlt() + value : value);
-                mission.updateWaypoint(wp);
-            });
-            mission.update(singleMissionActive());
-            if (selectedMarker) {
-                $('#pointAlt').val(selectedMarker.getAlt());
-                $('#altitudeInMeters').text(` ${convertCentimetersToMeters(selectedMarker.getAlt())}m`);
-            }
-            redrawLayer();
-            plotElevation();
+            wpListApplyChanges();
         });
 
-        $('#wpListBulkSpeedApply').on('click', function (event) {
+        $('#wpListReset').on('click', function (event) {
             event.preventDefault();
-            const value = Number($('#wpListBulkSpeedValue').val());
-            if (isNaN(value) || disableMarkerEdit) return;
-            mission.get().forEach(wp => {
-                if (wp.isAttached()) return;
-                if (wp.getAction() == MWNP.WPTYPE.WAYPOINT) {
-                    wp.setP1(value);
-                } else if (wp.getAction() == MWNP.WPTYPE.POSHOLD_TIME) {
-                    wp.setP2(value);
-                }
-                mission.updateWaypoint(wp);
-            });
-            mission.update(singleMissionActive());
-            if (selectedMarker) {
-                $('#pointP1').val(selectedMarker.getP1());
-                $('#pointP2').val(selectedMarker.getP2());
-            }
-            redrawLayer();
+            loadWpListFields();
+            setWpListStatus('', false);
         });
 
         $('#pointP3Alt').on('change', function (event) {
