@@ -2576,12 +2576,17 @@ function iconKey(filename) {
     /* Terrain height and ground clearance are otherwise only recomputed by
        checkAltElevSanity, which also corrects the altitude. This one only reports, using
        the same two formulas, so the panel can be refreshed without moving a waypoint. */
-    async function refreshGroundClearanceDisplay() {
+    async function refreshGroundClearanceDisplay(knownElevation) {
         const wp = selectedMarker;
         if (!wp) return;
 
-        const elevation = Number(await wp.getElevation(globalSettings));
-        if (selectedMarker !== wp || isNaN(elevation)) return;
+        // The terrain height is already on screen for the selected waypoint, so a caller
+        // that only needs the reading recomputed can hand it over and skip the lookup.
+        let elevation = Number(knownElevation);
+        if (isNaN(elevation)) {
+            elevation = Number(await wp.getElevation(globalSettings));
+            if (selectedMarker !== wp || isNaN(elevation)) return;
+        }
 
         $('#elevationValueAtWP').text(elevation);
 
@@ -4920,6 +4925,10 @@ function iconKey(filename) {
             // The box stays open on save so the tick next to the switch is visible;
             // the cancel button is what closes it.
             await applySeaLevelReference();
+
+            // The clearance display warns against the default altitude, which may just
+            // have changed, so recompute it against the terrain already on screen.
+            refreshGroundClearanceDisplay(Number($('#elevationValueAtWP').text()));
         });
 
         $('#cancelSettings').on('click', function () {
