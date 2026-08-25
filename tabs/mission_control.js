@@ -2632,6 +2632,20 @@ function iconKey(filename) {
         $('#MPapplySlrSaved').hide();
     }
 
+    /* A new waypoint is built from the default altitude, which is a height above the
+       ground. Dropped into a mission that reads its altitudes from sea level it would
+       keep that number and sit hundreds of metres below the rest of the route, so it
+       joins on the mission's own reference instead. */
+    async function adoptMissionAltitudeReference(waypoint) {
+        if (!missionUsesSeaLevel()) return;
+
+        const elevation = Number(await waypoint.getElevation(globalSettings));
+        if (isNaN(elevation)) return;
+
+        waypoint.setP3(missionControlTab.setBit(waypoint.getP3(), MWNP.P3.ALT_TYPE, true));
+        waypoint.setAlt(Math.round(Number(settings.alt) + elevation * 100));
+    }
+
     /* Dragging a waypoint, adding one or loading a mission can change what the mission
        says, so the switch follows along - unless the pilot has already moved it and is
        waiting to save, which must not be overwritten. */
@@ -3596,22 +3610,18 @@ function iconKey(filename) {
                 let tempWp = new Waypoint(tempMarker.number, MWNP.WPTYPE.WAYPOINT, Math.round(tempWpCoord[1] * 10000000), Math.round(tempWpCoord[0] * 10000000), Number(settings.alt), Number(settings.speed));
                 tempWp.setMultiMissionIdx(mission.getWaypoint(0).getMultiMissionIdx());
 
-                if (homeMarkers.length && HOME.getAlt() != "N/A") {
-                    (async () => {
+                (async () => {
+                    if (homeMarkers.length && HOME.getAlt() != "N/A") {
                         const elevationAtWP = await tempWp.getElevation(globalSettings);
                         tempWp.setAlt(checkAltElevSanity(false, settings.alt, elevationAtWP, false));
+                    }
+                    await adoptMissionAltitudeReference(tempWp);
 
-                        mission.insertWaypoint(tempWp, tempMarker.number);
-                        mission.update(singleMissionActive());
-                        refreshLayers();
-                        plotElevation();
-                    })()
-                } else {
                     mission.insertWaypoint(tempWp, tempMarker.number);
                     mission.update(singleMissionActive());
                     refreshLayers();
                     plotElevation();
-                }
+                })()
             }
             else if (selectedFeature && tempMarker.kind == "safehome" && tempMarker.selection) {
                 updateSelectedShAndFwAp(tempMarker.number);
@@ -3654,22 +3664,18 @@ function iconKey(filename) {
                     tempWp.setMultiMissionIdx(mission.getWaypoint(mission.get().length - 1).getMultiMissionIdx());
                 }
 
-                if (homeMarkers.length && HOME.getAlt() != "N/A") {
-                    (async () => {
+                (async () => {
+                    if (homeMarkers.length && HOME.getAlt() != "N/A") {
                         const elevationAtWP = await tempWp.getElevation(globalSettings);
                         tempWp.setAlt(checkAltElevSanity(false, settings.alt, elevationAtWP, false));
+                    }
+                    await adoptMissionAltitudeReference(tempWp);
 
-                        mission.put(tempWp);
-                        mission.update(singleMissionActive());
-                        refreshLayers();
-                        plotElevation();
-                    })()
-                } else {
                     mission.put(tempWp);
                     mission.update(singleMissionActive());
                     refreshLayers();
                     plotElevation();
-                }
+                })()
                 updateLocationButtonsVisibility();
             }
             //mission.missionDisplayDebug();
