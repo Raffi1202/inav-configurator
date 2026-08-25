@@ -210,6 +210,22 @@ function convertCentimetersToMeters(val) {
     return Number.parseInt(val) / 100;
 }
 
+/* Below the ground it flies over means straight into the terrain. The terrain is the
+   true ground; the conversion datum stands in when only the reference moved on a known
+   home, and without either there is nothing to judge against. */
+function endsBelowGround(wp, index, plan, conversionCm) {
+    let groundCm = null;
+    if (plan.terrainCm) {
+        groundCm = plan.terrainCm[index];
+    } else if (plan.reference) {
+        groundCm = conversionCm;
+    }
+    if (groundCm === null) return false;
+
+    const wpAbsolute = missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE);
+    return (wpAbsolute ? wp.getAlt() - groundCm : wp.getAlt()) < 0;
+}
+
 /* How a waypoint reads in the selector: its number, what it does, how high it flies. */
 function wpListLabel(wp) {
     const typeNames = {1: 'Waypoint', 2: 'PH_UNLIM', 3: 'PH_TIME', 4: 'RTH', 5: 'POI', 6: 'JUMP', 7: 'HEAD', 8: 'Land'};
@@ -2798,22 +2814,6 @@ function iconKey(filename) {
         } else if (wp.getAction() == MWNP.WPTYPE.POSHOLD_TIME) {
             wp.setP2(settings.speed);
         }
-    }
-
-    /* Below the ground it flies over means straight into the terrain. The terrain is
-       the true ground; the conversion datum stands in when only the reference moved on
-       a known home, and without either there is nothing to judge against. */
-    function endsBelowGround(wp, index, plan, conversionCm) {
-        let groundCm = null;
-        if (plan.terrainCm) {
-            groundCm = plan.terrainCm[index];
-        } else if (plan.reference) {
-            groundCm = conversionCm;
-        }
-        if (groundCm === null) return false;
-
-        const wpAbsolute = missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE);
-        return (wpAbsolute ? wp.getAlt() - groundCm : wp.getAlt()) < 0;
     }
 
     function writeDefaultsToWaypoint(wp, index, plan) {

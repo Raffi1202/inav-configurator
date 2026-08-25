@@ -5001,7 +5001,7 @@
         "message": "N\u00e4chster Wegpunkt"
     },
     "missionWpListCount": {
-        "message": "$1 Wegpunkte in der Mission"
+        "message": "$1 Wegpunkt(e) in der Mission"
     },
     "missionApplyNoElevation": {
         "message": "H\u00f6henabfrage fehlgeschlagen, H\u00f6hen wurden nicht ge\u00e4ndert"
@@ -5019,10 +5019,10 @@
         "message": "Standardh\u00f6he auf $1 Wegpunkt(e) angewendet"
     },
     "missionApplySpeedApplied": {
-        "message": "Standard-Speed auf $1 Wegpunkt(e) angewendet"
+        "message": "Standard-Geschwindigkeit auf $1 Wegpunkt(e) angewendet"
     },
     "missionApplyBelowGround": {
-        "message": "Achtung: $1 Wegpunkt(e) liegen jetzt unter dem Boden, bitte H\u00f6hen pr\u00fcfen"
+        "message": "Achtung: $1 Wegpunkt(e) liegen jetzt unter dem Gel\u00e4nde, bitte H\u00f6hen pr\u00fcfen"
     },
     "missionElevation": {
         "message": "Geländehöhe (m):"

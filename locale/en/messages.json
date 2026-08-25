@@ -5008,7 +5008,7 @@
         "message": "Next waypoint"
     },
     "missionWpListCount": {
-        "message": "$1 waypoints in the mission"
+        "message": "$1 waypoint(s) in the mission"
     },
     "missionApplyNoElevation": {
         "message": "Elevation lookup failed, altitudes were not changed"
