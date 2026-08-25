@@ -1073,6 +1073,7 @@ function iconKey(filename) {
         $('#pointP1').val('');
         $('#pointP2').val('');
         $('#pointP3Alt').val('');
+        $('#pointSavedTick').hide();
         $('#missionDistance').text(0);
         $('#MPeditPoint').fadeOut(300);
     }
@@ -2536,6 +2537,8 @@ function iconKey(filename) {
         }
         selectedMarker = renderWaypointOptionsTable(selectedMarker);
         $('#EditPointNumber').text("Edit point "+String(selectedMarker.getLayerNumber()+1));
+        // the tick belongs to edits of the previously shown waypoint
+        $('#pointSavedTick').hide();
         $('#MPeditPoint').fadeIn(300);
         $('#pointP3UserActionClass').fadeIn();
         redrawLayer();
@@ -5128,6 +5131,35 @@ function iconKey(filename) {
             redrawLayer();
             plotElevation();
             refreshGroundClearanceDisplay(elevation);
+        });
+
+        // The editor fields write into the waypoint when they commit (on change), so
+        // the tick in the title tracks that: typing hides it, a committed change shows
+        // it, and the save button commits whatever is still being typed. These handlers
+        // sit after the field handlers above, so the tick appears once the value is in.
+        const pointEditorFields = '#pointType, #pointLat, #pointLon, #pointAlt, #pointP1, #pointP2,'
+            + ' #groundClearanceValueAtWP, #pointP3Alt, #pointP3UserAction1, #pointP3UserAction2,'
+            + ' #pointP3UserAction3, #pointP3UserAction4, #wpApproachAlt, #wpLandAlt,'
+            + ' #wpApproachDirection, #wpLandHeading1, #wpLandHeading1Excl, #wpLandHeading2, #wpLandHeading2Excl';
+        $(pointEditorFields).on('input', function () {
+            $('#pointSavedTick').hide();
+        });
+        $(pointEditorFields).on('change', function () {
+            if (selectedMarker) $('#pointSavedTick').show();
+        });
+
+        $('#savePointButton').on('click', function (event) {
+            event.preventDefault();
+            if (!selectedMarker) return;
+            // The change handler is what writes a value into the waypoint, and a field
+            // still being typed in has not fired it yet - so fire it, then leave the
+            // field. Fields already committed just show the tick.
+            const active = document.activeElement;
+            if (active && $(active).closest('#MPeditPoint').length) {
+                $(active).trigger('change');
+                active.blur();
+            }
+            $('#pointSavedTick').show();
         });
 
         updateTotalInfo();
