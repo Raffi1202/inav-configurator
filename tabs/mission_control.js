@@ -2528,7 +2528,6 @@ function iconKey(filename) {
         $('#MPeditPoint').fadeIn(300);
         $('#pointP3UserActionClass').fadeIn();
         redrawLayer();
-        loadWpListFields();
     }
 
     function selectWaypointFromList(wpNumber) {
@@ -2592,20 +2591,6 @@ function iconKey(filename) {
         }
     }
 
-    function loadWpListFields() {
-        if (selectedMarker) {
-            $('#wpListAltValue').val(selectedMarker.getAlt());
-            $('#wpListSpeedValue').val(selectedMarker.getAction() == MWNP.WPTYPE.POSHOLD_TIME ? selectedMarker.getP2() : selectedMarker.getP1());
-            changeSwitch($('#wpListSlr'), missionControlTab.isBitSet(selectedMarker.getP3(), MWNP.P3.ALT_TYPE));
-        }
-        $('.wpListParamEnable').prop('checked', false);
-        updateWpListHomeHint();
-    }
-
-    function setWpListStatus(message, isError) {
-        $('#wpListStatus').text(message).toggleClass('wpListStatusError', Boolean(isError));
-    }
-
     /* Push values a save may have altered back into the single point panel directly:
        re-selecting the waypoint would start another elevation lookup. */
     function syncEditPanelWithSelection() {
@@ -2625,41 +2610,87 @@ function iconKey(filename) {
         selectWaypointFromList(waypoints[next].getNumber());
     }
 
-    /* Nothing is written while the fields are edited. Only the ticked parameters are
-       applied, and only when the user saves, so no value changes by accident. */
-    function wpListApplyChanges() {
-        if (disableMarkerEdit) return;
+    function setApplyStatus(message, isError) {
+        $('#MPapplyStatus').text(message).toggleClass('mpApplyStatusError', Boolean(isError));
+    }
 
-        const targets = $('#wpListTarget').val() === 'all'
-            ? wpListSelectableWaypoints()
-            : (selectedMarker ? [selectedMarker] : []);
+    /* One request for the whole mission instead of one per waypoint; opentopodata takes
+       locations separated by a pipe and answers in the same order. */
+    async function fetchWaypointElevations(waypoints) {
+        const elevations = [];
+        for (let start = 0; start < waypoints.length; start += 100) {
+            const chunk = waypoints.slice(start, start + 100);
+            const locations = chunk.map(wp => wp.getLatMap() + ',' + wp.getLonMap()).join('|');
+            const response = await fetch('https://api.opentopodata.org/v1/aster30m?locations=' + locations);
+            const answer = await response.json();
+            if (answer.status != 'OK' || !answer.results || answer.results.length != chunk.length) return null;
+            answer.results.forEach(result => elevations.push(result.elevation == null ? null : result.elevation));
+        }
+        return elevations.some(e => e === null) ? null : elevations;
+    }
+
+    /* A waypoint altitude is either measured from home or above sea level, so switching
+       the reference needs a ground level to convert through. Home is the exact one; without
+       a home point the terrain under each waypoint is used, which keeps every waypoint the
+       same height above the ground it flies over. */
+    async function resolveAltitudeReference(waypoints) {
+        if (homeMarkers.length) {
+            let elevation = Number(HOME.getAlt());
+            if (isNaN(elevation)) {
+                elevation = Number(await HOME.getElevation(globalSettings));
+                if (!isNaN(elevation)) HOME.setAlt(elevation);
+            }
+            if (!isNaN(elevation)) {
+                return {kind: 'home', groundCm: waypoints.map(() => elevation * 100)};
+            }
+        }
+        const terrain = await fetchWaypointElevations(waypoints);
+        return terrain ? {kind: 'terrain', groundCm: terrain.map(e => e * 100)} : null;
+    }
+
+    /* Nothing reaches the mission while the fields are edited. Only ticked parameters are
+       applied, and only on save, so no value changes by accident. */
+    async function applyMissionParameters() {
+        if (disableMarkerEdit) return false;
+
+        const changeAlt = $('#MPapplyAlt').prop('checked');
+        const changeSpeed = $('#MPapplySpeed').prop('checked');
+        const changeSlr = $('#MPapplySlr').prop('checked');
+        if (!changeAlt && !changeSpeed && !changeSlr) return false;
+
+        const targets = $('#MPapplyTarget').val() === 'single'
+            ? (selectedMarker ? [selectedMarker] : [])
+            : wpListSelectableWaypoints();
 
         if (!targets.length) {
-            setWpListStatus(i18n.getMessage('missionWpListNoTarget'), true);
-            return;
+            setApplyStatus(i18n.getMessage('missionApplyNoTarget'), true);
+            return true;
         }
 
-        const homeElevationCm = wpListHomeElevationCm();
-        const changeAlt = $('#wpListAltEnable').prop('checked');
-        const changeSpeed = $('#wpListSpeedEnable').prop('checked');
-        const changeSlr = $('#wpListSlrEnable').prop('checked') && homeElevationCm !== null;
+        const altValue = Number($('#MPdefaultPointAlt').val());
+        const speedValue = Number($('#MPdefaultPointSpeed').val());
+        const addAltitude = $('#MPapplyAltMode').val() === 'add';
+        const toAbsolute = $('#MPapplySlrValue').prop('checked');
 
-        if (!changeAlt && !changeSpeed && !changeSlr) {
-            setWpListStatus(i18n.getMessage('missionWpListNothing'), true);
-            return;
+        let reference = null;
+        if (changeSlr) {
+            setApplyStatus(i18n.getMessage('missionApplyWorking'), false);
+            reference = await resolveAltitudeReference(targets);
+            if (!reference) {
+                setApplyStatus(i18n.getMessage('missionApplyNoElevation'), true);
+                return true;
+            }
         }
 
-        const altValue = Number($('#wpListAltValue').val());
-        const speedValue = Number($('#wpListSpeedValue').val());
-        const addAltitude = $('#wpListAltMode').val() === 'add';
-        const toAbsolute = $('#wpListSlr').prop('checked');
+        let belowGround = 0;
 
-        targets.forEach(function (wp) {
-            // The reference switch runs first so an altitude entered below is read
-            // in the reference the user just picked.
+        targets.forEach(function (wp, index) {
+            // The reference switch runs first so an altitude entered above is read in the
+            // reference the user just picked.
             if (changeSlr && missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE) != toAbsolute) {
                 wp.setP3(missionControlTab.setBit(wp.getP3(), MWNP.P3.ALT_TYPE, toAbsolute));
-                wp.setAlt(wp.getAlt() + (toAbsolute ? homeElevationCm : -homeElevationCm));
+                const groundCm = reference.groundCm[index];
+                wp.setAlt(Math.round(wp.getAlt() + (toAbsolute ? groundCm : -groundCm)));
             }
             if (changeAlt && !isNaN(altValue) && wp.getAction() != MWNP.WPTYPE.SET_POI) {
                 wp.setAlt(addAltitude ? wp.getAlt() + altValue : altValue);
@@ -2671,20 +2702,36 @@ function iconKey(filename) {
                     wp.setP2(speedValue);
                 }
             }
+            // An altitude converted against a ground level can land under it, which flies
+            // the mission into the terrain, so it is counted and reported rather than fixed.
+            if (reference) {
+                const clearance = missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE)
+                    ? wp.getAlt() - reference.groundCm[index]
+                    : wp.getAlt();
+                if (clearance < 0) belowGround++;
+            }
             mission.updateWaypoint(wp);
         });
 
-        const saved = [];
-        if (changeAlt) saved.push(i18n.getMessage('missionWpListAltShort'));
-        if (changeSpeed) saved.push(i18n.getMessage('missionWpListSpeedShort'));
-        if (changeSlr) saved.push(i18n.getMessage('missionWpListSlrShort'));
+        const applied = [];
+        if (changeAlt) applied.push(i18n.getMessage('missionApplyAltShort'));
+        if (changeSpeed) applied.push(i18n.getMessage('missionApplySpeedShort'));
+        if (changeSlr) applied.push(i18n.getMessage('missionApplySlrShort'));
 
         mission.update(singleMissionActive());
         syncEditPanelWithSelection();
         redrawLayer();
         plotElevation();
-        loadWpListFields();
-        setWpListStatus(i18n.getMessage('missionWpListSaved', [String(targets.length), saved.join(', ')]), false);
+        $('.mpApplyEnable').prop('checked', false);
+
+        const via = reference
+            ? ' ' + i18n.getMessage(reference.kind === 'home' ? 'missionApplyViaHome' : 'missionApplyViaTerrain')
+            : '';
+        const warning = belowGround
+            ? ' ' + i18n.getMessage('missionApplyBelowGround', [String(belowGround)])
+            : '';
+        setApplyStatus(i18n.getMessage('missionApplySaved', [String(targets.length), applied.join(', ')]) + via + warning, Boolean(belowGround));
+        return true;
     }
 
     function renderSafeHomeOptions()  {
@@ -3686,7 +3733,6 @@ function iconKey(filename) {
         setupShowHidePanel('showHideWpListButton',      'wpListContent');
 
         renderWaypointSelect();
-        loadWpListFields();
 
         /////////////////////////////////////////////
         // Callback for Waypoint edition
@@ -3804,29 +3850,16 @@ function iconKey(filename) {
         });
 
         // Touching a value marks it, so saving writes only what was actually edited
-        $('#wpListAltValue, #wpListAltMode').on('input change', function () {
-            $('#wpListAltEnable').prop('checked', true);
+        $('#MPdefaultPointAlt, #MPapplyAltMode').on('input change', function () {
+            $('#MPapplyAlt').prop('checked', true);
         });
 
-        $('#wpListSpeedValue').on('input change', function () {
-            $('#wpListSpeedEnable').prop('checked', true);
+        $('#MPdefaultPointSpeed').on('input change', function () {
+            $('#MPapplySpeed').prop('checked', true);
         });
 
-        $('#wpListSlr').on('change', function () {
-            if (!$(this).prop('disabled')) {
-                $('#wpListSlrEnable').prop('checked', true);
-            }
-        });
-
-        $('#wpListApply').on('click', function (event) {
-            event.preventDefault();
-            wpListApplyChanges();
-        });
-
-        $('#wpListReset').on('click', function (event) {
-            event.preventDefault();
-            loadWpListFields();
-            setWpListStatus('', false);
+        $('#MPapplySlrValue').on('change', function () {
+            $('#MPapplySlr').prop('checked', true);
         });
 
         $('#pointP3Alt').on('change', function (event) {
@@ -4866,7 +4899,7 @@ function iconKey(filename) {
         /////////////////////////////////////////////
         // Callback for settings
         /////////////////////////////////////////////
-        $('#saveSettings').on('click', function () {
+        $('#saveSettings').on('click', async function () {
             let oldSafeRadiusSH = settings.safeRadiusSH;
 
             // update only default settings
@@ -4884,10 +4917,15 @@ function iconKey(filename) {
                 $('#SafeHomeSafeDistance').text(settings.safeRadiusSH);
             }
 
-            closeSettingsPanel();
+            // Stay open when waypoints were touched so the result stays readable
+            if (!await applyMissionParameters()) {
+                closeSettingsPanel();
+            }
         });
 
         $('#cancelSettings').on('click', function () {
+            $('.mpApplyEnable').prop('checked', false);
+            setApplyStatus('', false);
             loadSettings();
             closeSettingsPanel();
         });

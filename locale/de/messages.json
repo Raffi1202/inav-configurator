@@ -5003,52 +5003,61 @@
     "missionWpListCount": {
         "message": "$1 Wegpunkte in der Mission"
     },
-    "missionWpListTarget": {
-        "message": "\u00c4ndern:"
+    "missionApplyHead": {
+        "message": "Auf Wegpunkte anwenden"
     },
-    "missionWpListTargetSingle": {
-        "message": "Gew\u00e4hlter Wegpunkt"
+    "missionApplyTarget": {
+        "message": "Anwenden auf:"
     },
-    "missionWpListTargetAll": {
+    "missionApplyTargetAll": {
         "message": "Alle Wegpunkte"
     },
-    "missionWpListAlt": {
-        "message": "H\u00f6he (cm)"
+    "missionApplyTargetSingle": {
+        "message": "Gew\u00e4hlten Wegpunkt"
     },
-    "missionWpListBulkSpeed": {
-        "message": "Speed (cm/s)"
+    "missionApplyAlt": {
+        "message": "H\u00f6he von oben"
     },
-    "missionWpListBulkSet": {
+    "missionApplySpeed": {
+        "message": "Speed von oben"
+    },
+    "missionApplyModeSet": {
         "message": "Setzen"
     },
-    "missionWpListBulkAdd": {
+    "missionApplyModeAdd": {
         "message": "Addieren"
     },
-    "missionWpListSave": {
-        "message": "Speichern"
+    "missionApplyHint": {
+        "message": "Angehakte Werte werden beim Speichern in die Wegpunkte geschrieben."
     },
-    "missionWpListReset": {
-        "message": "Verwerfen"
-    },
-    "missionWpListSaved": {
+    "missionApplySaved": {
         "message": "Auf $1 Wegpunkt(en) gespeichert: $2"
     },
-    "missionWpListNothing": {
-        "message": "Nichts angehakt, nichts gespeichert"
-    },
-    "missionWpListNoTarget": {
+    "missionApplyNoTarget": {
         "message": "Kein Wegpunkt gew\u00e4hlt"
     },
-    "missionWpListNoHome": {
-        "message": "H\u00f6he von Home unbekannt, Umrechnung auf Meeresspiegel nicht m\u00f6glich"
+    "missionApplyWorking": {
+        "message": "Gel\u00e4ndeh\u00f6hen werden abgefragt..."
     },
-    "missionWpListAltShort": {
+    "missionApplyNoElevation": {
+        "message": "H\u00f6henabfrage fehlgeschlagen, Meeresspiegel-Referenz nicht ge\u00e4ndert"
+    },
+    "missionApplyViaHome": {
+        "message": "(umgerechnet \u00fcber die Home-H\u00f6he)"
+    },
+    "missionApplyViaTerrain": {
+        "message": "(umgerechnet \u00fcber die Gel\u00e4ndeh\u00f6he je Wegpunkt)"
+    },
+    "missionApplyBelowGround": {
+        "message": "- Achtung: $1 Wegpunkt(e) liegen jetzt unter dem Boden, bitte H\u00f6hen pr\u00fcfen"
+    },
+    "missionApplyAltShort": {
         "message": "H\u00f6he"
     },
-    "missionWpListSpeedShort": {
+    "missionApplySpeedShort": {
         "message": "Speed"
     },
-    "missionWpListSlrShort": {
+    "missionApplySlrShort": {
         "message": "Meeresspiegel-Referenz"
     },
     "missionElevation": {

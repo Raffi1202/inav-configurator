@@ -5010,52 +5010,61 @@
     "missionWpListCount": {
         "message": "$1 waypoints in the mission"
     },
-    "missionWpListTarget": {
-        "message": "Change:"
+    "missionApplyHead": {
+        "message": "Apply to waypoints"
     },
-    "missionWpListTargetSingle": {
-        "message": "Selected waypoint"
+    "missionApplyTarget": {
+        "message": "Apply to:"
     },
-    "missionWpListTargetAll": {
+    "missionApplyTargetAll": {
         "message": "All waypoints"
     },
-    "missionWpListAlt": {
-        "message": "Altitude (cm)"
+    "missionApplyTargetSingle": {
+        "message": "Selected waypoint"
     },
-    "missionWpListBulkSpeed": {
-        "message": "Speed (cm/s)"
+    "missionApplyAlt": {
+        "message": "Altitude above"
     },
-    "missionWpListBulkSet": {
+    "missionApplySpeed": {
+        "message": "Speed above"
+    },
+    "missionApplyModeSet": {
         "message": "Set"
     },
-    "missionWpListBulkAdd": {
+    "missionApplyModeAdd": {
         "message": "Add"
     },
-    "missionWpListSave": {
-        "message": "Save"
+    "missionApplyHint": {
+        "message": "Ticked values are written to the waypoints when you save."
     },
-    "missionWpListReset": {
-        "message": "Discard"
-    },
-    "missionWpListSaved": {
+    "missionApplySaved": {
         "message": "Saved on $1 waypoint(s): $2"
     },
-    "missionWpListNothing": {
-        "message": "Nothing ticked, nothing saved"
-    },
-    "missionWpListNoTarget": {
+    "missionApplyNoTarget": {
         "message": "No waypoint selected"
     },
-    "missionWpListNoHome": {
-        "message": "Home elevation unknown, sea level conversion unavailable"
+    "missionApplyWorking": {
+        "message": "Reading elevations..."
     },
-    "missionWpListAltShort": {
+    "missionApplyNoElevation": {
+        "message": "Elevation lookup failed, sea level reference not changed"
+    },
+    "missionApplyViaHome": {
+        "message": "(converted via home elevation)"
+    },
+    "missionApplyViaTerrain": {
+        "message": "(converted via the terrain under each waypoint)"
+    },
+    "missionApplyBelowGround": {
+        "message": "- warning: $1 waypoint(s) now sit below the ground, check the altitudes"
+    },
+    "missionApplyAltShort": {
         "message": "altitude"
     },
-    "missionWpListSpeedShort": {
+    "missionApplySpeedShort": {
         "message": "speed"
     },
-    "missionWpListSlrShort": {
+    "missionApplySlrShort": {
         "message": "sea level reference"
     },
     "missionElevation": {

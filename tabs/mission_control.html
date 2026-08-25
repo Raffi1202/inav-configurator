@@ -138,6 +138,36 @@
                             <label class="point-label" for="MPdefaultLandAlt">FW Land Alt (m): </label>
                             <input id="MPdefaultLandAlt" type="text" value="0" required>
                         </div>
+                        <hr>
+                        <div class="point">
+                            <span style="font-weight: bold" data-i18n="missionApplyHead"></span>
+                        </div>
+                        <div class="point">
+                            <label class="point-label" for="MPapplyTarget" data-i18n="missionApplyTarget"></label>
+                            <select id="MPapplyTarget">
+                                <option value="all" data-i18n="missionApplyTargetAll"></option>
+                                <option value="single" data-i18n="missionApplyTargetSingle"></option>
+                            </select>
+                        </div>
+                        <div class="point">
+                            <input id="MPapplyAlt" class="mpApplyEnable" type="checkbox">
+                            <label class="mpApplyLabel" for="MPapplyAlt" data-i18n="missionApplyAlt"></label>
+                            <select id="MPapplyAltMode">
+                                <option value="set" data-i18n="missionApplyModeSet"></option>
+                                <option value="add" data-i18n="missionApplyModeAdd"></option>
+                            </select>
+                        </div>
+                        <div class="point">
+                            <input id="MPapplySpeed" class="mpApplyEnable" type="checkbox">
+                            <label class="mpApplyLabel" for="MPapplySpeed" data-i18n="missionApplySpeed"></label>
+                        </div>
+                        <div class="point">
+                            <input id="MPapplySlr" class="mpApplyEnable" type="checkbox">
+                            <label class="mpApplyLabel" for="MPapplySlrValue" data-i18n="missionSeaLevelRef"></label>
+                            <input id="MPapplySlrValue" type="checkbox" value="0" class="togglemedium">
+                        </div>
+                        <div class="mpApplyHint" data-i18n="missionApplyHint"></div>
+                        <div id="MPapplyStatus" class="mpApplyStatus"></div>
                     </div>
                 </div>
 
@@ -432,39 +462,6 @@
                             <a id="wpListNext" class="wpListNavBtn" href="#" i18n_title="missionWpListNext">&#9654;</a>
                         </div>
                         <div class="wpListCount" id="wpListCount"></div>
-                        <hr>
-                        <div class="point">
-                            <label class="point-label" for="wpListTarget" data-i18n="missionWpListTarget"></label>
-                            <select id="wpListTarget">
-                                <option value="single" data-i18n="missionWpListTargetSingle"></option>
-                                <option value="all" data-i18n="missionWpListTargetAll"></option>
-                            </select>
-                        </div>
-                        <div class="point">
-                            <input id="wpListAltEnable" class="wpListParamEnable" type="checkbox">
-                            <label class="point-label wpListParamLabel" for="wpListAltValue" data-i18n="missionWpListAlt"></label>
-                            <select id="wpListAltMode">
-                                <option value="set" data-i18n="missionWpListBulkSet"></option>
-                                <option value="add" data-i18n="missionWpListBulkAdd"></option>
-                            </select>
-                            <input id="wpListAltValue" type="number" value="0">
-                        </div>
-                        <div class="point">
-                            <input id="wpListSpeedEnable" class="wpListParamEnable" type="checkbox">
-                            <label class="point-label wpListParamLabel" for="wpListSpeedValue" data-i18n="missionWpListBulkSpeed"></label>
-                            <input id="wpListSpeedValue" type="number" value="0">
-                        </div>
-                        <div class="point">
-                            <input id="wpListSlrEnable" class="wpListParamEnable" type="checkbox">
-                            <label class="point-label wpListParamLabel" for="wpListSlr" data-i18n="missionSeaLevelRef"></label>
-                            <input id="wpListSlr" type="checkbox" value="0" class="togglemedium">
-                        </div>
-                        <div id="wpListSlrHint" class="wpListHint" data-i18n="missionWpListNoHome" style="display: none"></div>
-                        <div class="wpListActions">
-                            <a id="wpListApply" class="wpListApplyBtn" href="#" data-i18n="missionWpListSave"></a>
-                            <a id="wpListReset" class="wpListResetBtn" href="#" data-i18n="missionWpListReset"></a>
-                        </div>
-                        <div id="wpListStatus" class="wpListStatus"></div>
                     </div>
                 </div>
 
