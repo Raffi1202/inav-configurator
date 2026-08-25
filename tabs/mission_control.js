@@ -2573,6 +2573,29 @@ function iconKey(filename) {
         syncSeaLevelSwitch();
     }
 
+    /* Terrain height and ground clearance are otherwise only recomputed by
+       checkAltElevSanity, which also corrects the altitude. This one only reports, using
+       the same two formulas, so the panel can be refreshed without moving a waypoint. */
+    async function refreshGroundClearanceDisplay() {
+        const wp = selectedMarker;
+        if (!wp) return;
+
+        const elevation = Number(await wp.getElevation(globalSettings));
+        if (selectedMarker !== wp || isNaN(elevation)) return;
+
+        $('#elevationValueAtWP').text(elevation);
+
+        let clearance = 'NO HOME';
+        if (missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE)) {
+            clearance = wp.getAlt() / 100 - elevation;
+        } else if (homeMarkers.length && HOME.getAlt() != "N/A") {
+            clearance = wp.getAlt() / 100 + (Number(HOME.getAlt()) - elevation);
+        }
+        document.getElementById('groundClearanceAtWP').style.color =
+            (typeof clearance === 'number' && clearance < settings.alt / 100) ? "#FF0000" : "#303030";
+        $('#groundClearanceValueAtWP').text(` ${clearance}`);
+    }
+
     /* Push values a save may have altered back into the single point panel directly:
        re-selecting the waypoint would start another elevation lookup. */
     function syncEditPanelWithSelection() {
@@ -2582,6 +2605,7 @@ function iconKey(filename) {
         $('#pointP1').val(selectedMarker.getP1());
         $('#pointP2').val(selectedMarker.getP2());
         changeSwitch($('#pointP3Alt'), missionControlTab.isBitSet(selectedMarker.getP3(), MWNP.P3.ALT_TYPE));
+        refreshGroundClearanceDisplay();
     }
 
     function stepWaypointSelection(offset) {
