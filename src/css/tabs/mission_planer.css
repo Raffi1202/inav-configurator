@@ -636,6 +636,25 @@
     line-height: 14px;
 }
 
+/* The map fills the column, so the elevation profile would render below the
+   viewport where nobody sees it; it floats over the bottom of the map instead. */
+.tab-mission-control .cf_column.threefourth_left {
+    position: relative;
+}
+
+.tab-mission-control #missionPlannerElevation {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    z-index: 1001;
+    opacity: 0.97;
+}
+
+.tab-mission-control #elevationDiv {
+    height: 220px;
+}
+
 .tab-mission-control .btnMenu a {
     /*  common styles for content toolbar buttons */
     /*margin-top: 0;*/
