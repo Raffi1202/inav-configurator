@@ -5148,6 +5148,49 @@ function iconKey(filename) {
             if (selectedMarker) $('#pointSavedTick').show();
         });
 
+        // The elevation profile floats over the map with both sides anchored, so its
+        // width always follows the map. The title bar drags it vertically, clamped to
+        // the map area; a double click puts it back onto its default spot at the bottom.
+        (function () {
+            const panel = $('#missionPlannerElevation');
+            const bar = panel.find('.gui_box_titlebar');
+            bar.css('cursor', 'ns-resize');
+            let dragging = false, startY = 0, startTop = 0;
+
+            const clampTop = function (top) {
+                const parentH = panel[0].offsetParent.getBoundingClientRect().height;
+                const panelH = panel[0].getBoundingClientRect().height;
+                return Math.min(Math.max(top, 10), Math.max(10, parentH - panelH - 10));
+            };
+
+            bar.on('mousedown', function (e) {
+                if ($(e.target).closest('a').length) return;   // the close button stays a button
+                const rect = panel[0].getBoundingClientRect();
+                const parentRect = panel[0].offsetParent.getBoundingClientRect();
+                startTop = rect.top - parentRect.top;
+                panel.css({top: startTop + 'px', bottom: 'auto'});
+                dragging = true;
+                startY = e.clientY;
+                e.preventDefault();
+            });
+
+            $(document).on('mousemove.elevationDrag', function (e) {
+                if (!dragging) return;
+                panel.css('top', clampTop(startTop + e.clientY - startY) + 'px');
+            });
+
+            $(document).on('mouseup.elevationDrag', function () {
+                if (!dragging) return;
+                dragging = false;
+                // a window resize must never leave it outside the map
+                panel.css('top', clampTop(panel[0].getBoundingClientRect().top - panel[0].offsetParent.getBoundingClientRect().top) + 'px');
+            });
+
+            bar.on('dblclick', function () {
+                panel.css({bottom: '10px', top: 'auto'});
+            });
+        })();
+
         $('#savePointButton').on('click', function (event) {
             event.preventDefault();
             if (!selectedMarker) return;

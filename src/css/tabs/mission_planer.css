@@ -646,7 +646,10 @@
     position: absolute;
     bottom: 10px;
     left: 10px;
-    right: 10px;
+    /* .gui_box forces its own width, which ignores a right anchor and overflows the
+       map, so the width is stated outright: the full map minus both margins. */
+    width: calc(100% - 20px);
+    box-sizing: border-box;
     z-index: 1001;
     opacity: 0.97;
 }
