@@ -210,6 +210,13 @@ function convertCentimetersToMeters(val) {
     return Number.parseInt(val) / 100;
 }
 
+/* How a waypoint reads in the selector: its number, what it does, how high it flies. */
+function wpListLabel(wp) {
+    const typeNames = {1: 'Waypoint', 2: 'PH_UNLIM', 3: 'PH_TIME', 4: 'RTH', 5: 'POI', 6: 'JUMP', 7: 'HEAD', 8: 'Land'};
+    const type = typeNames[wp.getAction()] || ('Type ' + wp.getAction());
+    return (wp.getLayerNumber() + 1) + ' \u00b7 ' + type + ' \u00b7 ' + convertCentimetersToMeters(wp.getAlt()) + ' m';
+}
+
 /* The default fields hold centimetres and centimetres per second, which nobody flies
    in, so each carries its value in metres and km/h alongside. */
 function updateDefaultUnitHints() {
@@ -2581,12 +2588,6 @@ function iconKey(filename) {
         return mission.get().filter(wp => !wp.isAttached());
     }
 
-    function wpListLabel(wp) {
-        const typeNames = {1: 'Waypoint', 2: 'PH_UNLIM', 3: 'PH_TIME', 4: 'RTH', 5: 'POI', 6: 'JUMP', 7: 'HEAD', 8: 'Land'};
-        const type = typeNames[wp.getAction()] || ('Type ' + wp.getAction());
-        return (wp.getLayerNumber() + 1) + ' \u00b7 ' + type + ' \u00b7 ' + convertCentimetersToMeters(wp.getAlt()) + ' m';
-    }
-
     function renderWaypointSelect() {
         const $select = $('#wpListSelect');
         if (!$select.length) return;
@@ -2791,6 +2792,30 @@ function iconKey(filename) {
     /* Writes one waypoint and reports whether it ended up under the ground. Altitudes
        are read on the waypoint's own datum, since a mission can carry mixed references
        set per waypoint in the point editor. */
+    function writeSpeedToWaypoint(wp) {
+        if (wp.getAction() == MWNP.WPTYPE.WAYPOINT) {
+            wp.setP1(settings.speed);
+        } else if (wp.getAction() == MWNP.WPTYPE.POSHOLD_TIME) {
+            wp.setP2(settings.speed);
+        }
+    }
+
+    /* Below the ground it flies over means straight into the terrain. The terrain is
+       the true ground; the conversion datum stands in when only the reference moved on
+       a known home, and without either there is nothing to judge against. */
+    function endsBelowGround(wp, index, plan, conversionCm) {
+        let groundCm = null;
+        if (plan.terrainCm) {
+            groundCm = plan.terrainCm[index];
+        } else if (plan.reference) {
+            groundCm = conversionCm;
+        }
+        if (groundCm === null) return false;
+
+        const wpAbsolute = missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE);
+        return (wpAbsolute ? wp.getAlt() - groundCm : wp.getAlt()) < 0;
+    }
+
     function writeDefaultsToWaypoint(wp, index, plan) {
         const conversionCm = plan.reference ? plan.reference.groundCm[index] : 0;
         if (plan.switchMoved && missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE) != plan.toAbsolute) {
@@ -2799,26 +2824,16 @@ function iconKey(filename) {
             convertLandingApproach(wp, plan.toAbsolute, conversionCm);
         }
 
-        const wpAbsolute = missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE);
         // A POI's altitude is not flown, so the default is not forced onto it. On sea
         // level the default measures from the terrain under this waypoint.
         if (plan.applyAlt && wp.getAction() != MWNP.WPTYPE.SET_POI) {
+            const wpAbsolute = missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE);
             wp.setAlt(wpAbsolute ? Math.round(plan.terrainCm[index] + settings.alt) : settings.alt);
         }
-        if (plan.speedChanged) {
-            if (wp.getAction() == MWNP.WPTYPE.WAYPOINT) {
-                wp.setP1(settings.speed);
-            } else if (wp.getAction() == MWNP.WPTYPE.POSHOLD_TIME) {
-                wp.setP2(settings.speed);
-            }
-        }
+        if (plan.speedChanged) writeSpeedToWaypoint(wp);
         mission.updateWaypoint(wp);
 
-        // The terrain is the true ground; the conversion datum stands in when only the
-        // reference moved on a known home.
-        const groundCm = plan.terrainCm ? plan.terrainCm[index] : (plan.reference ? conversionCm : null);
-        if (groundCm === null) return false;
-        return (wpAbsolute ? wp.getAlt() - groundCm : wp.getAlt()) < 0;
+        return endsBelowGround(wp, index, plan, conversionCm);
     }
 
     /* Fetches the ground levels the requested changes need. Two different grounds serve
@@ -2836,7 +2851,7 @@ function iconKey(filename) {
             ? plan.toAbsolute
             : waypoints.some(wp => missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE)));
 
-        if (plan.reference && plan.reference.kind === 'terrain') {
+        if (plan.reference?.kind === 'terrain') {
             plan.terrainCm = plan.reference.groundCm;
         } else if (needsTerrain) {
             const terrain = await fetchWaypointElevations(waypoints);
