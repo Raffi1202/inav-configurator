@@ -2570,25 +2570,7 @@ function iconKey(filename) {
         $('#wpListCount').text(i18n.getMessage('missionWpListCount', [String(waypoints.length)]));
         $select.prop('disabled', waypoints.length === 0);
         $('#wpListPrev, #wpListNext').toggleClass('disabled', waypoints.length === 0);
-        updateWpListHomeHint();
-    }
-
-    /* A relative waypoint altitude is measured from home, so converting a whole mission
-       between relative and sea level needs the home elevation only - no per waypoint lookup. */
-    function wpListHomeElevationCm() {
-        if (!homeMarkers.length) return null;
-        const elevation = Number(HOME.getAlt());
-        return isNaN(elevation) ? null : elevation * 100;
-    }
-
-    function updateWpListHomeHint() {
-        const available = wpListHomeElevationCm() !== null;
-        $('#wpListSlr').prop('disabled', !available);
-        $('#wpListSlrEnable').prop('disabled', !available);
-        $('#wpListSlrHint').toggle(!available);
-        if (!available) {
-            $('#wpListSlrEnable').prop('checked', false);
-        }
+        syncSeaLevelSwitch();
     }
 
     /* Push values a save may have altered back into the single point panel directly:
@@ -2610,15 +2592,32 @@ function iconKey(filename) {
         selectWaypointFromList(waypoints[next].getNumber());
     }
 
-    /* The switch is read back from the mission when the box opens, so saving only
-       converts when the pilot actually moved it. */
+    /* The switch mirrors the mission, so saving only converts when the pilot actually
+       moved it away from what the mission already says. */
     var seaLevelSwitchOnOpen = false;
 
-    function refreshSeaLevelSwitch() {
+    function missionUsesSeaLevel() {
         const waypoints = wpListSelectableWaypoints();
-        seaLevelSwitchOnOpen = waypoints.length > 0
+        return waypoints.length > 0
             && missionControlTab.isBitSet(waypoints[0].getP3(), MWNP.P3.ALT_TYPE);
+    }
+
+    function refreshSeaLevelSwitch() {
+        seaLevelSwitchOnOpen = missionUsesSeaLevel();
         changeSwitch($('#MPapplySlrValue'), seaLevelSwitchOnOpen);
+        $('#MPapplySlrSaved').hide();
+    }
+
+    /* Dragging a waypoint, adding one or loading a mission can change what the mission
+       says, so the switch follows along - unless the pilot has already moved it and is
+       waiting to save, which must not be overwritten. */
+    function syncSeaLevelSwitch() {
+        if (!$('#MPapplySlrValue').length) return;
+        if ($('#MPapplySlrValue').prop('checked') !== seaLevelSwitchOnOpen) return;
+        const inMission = missionUsesSeaLevel();
+        if (inMission === seaLevelSwitchOnOpen) return;
+        seaLevelSwitchOnOpen = inMission;
+        changeSwitch($('#MPapplySlrValue'), inMission);
         $('#MPapplySlrSaved').hide();
     }
 
@@ -2681,6 +2680,20 @@ function iconKey(filename) {
             if (missionControlTab.isBitSet(wp.getP3(), MWNP.P3.ALT_TYPE) != toAbsolute) {
                 wp.setP3(missionControlTab.setBit(wp.getP3(), MWNP.P3.ALT_TYPE, toAbsolute));
                 wp.setAlt(Math.round(wp.getAlt() + (toAbsolute ? groundCm : -groundCm)));
+                // A landing carries its own approach and land altitudes on the same
+                // datum, so they have to move with the waypoint or the approach is
+                // flown against the wrong zero.
+                if (wp.getAction() == MWNP.WPTYPE.LAND) {
+                    const approach = FC.FW_APPROACH.get()[FC.SAFEHOMES.getMaxSafehomeCount() + wp.getMultiMissionIdx()];
+                    if (approach && approach.getIsSeaLevelRef() != toAbsolute) {
+                        const oldGroundCm = approach.getIsSeaLevelRef() ? approach.getElevation() : 0;
+                        const shift = toAbsolute ? groundCm - oldGroundCm : -groundCm;
+                        approach.setApproachAltAsl(Math.round(approach.getApproachAltAsl() + shift));
+                        approach.setLandAltAsl(Math.round(approach.getLandAltAsl() + shift));
+                        approach.setElevation(groundCm);
+                        approach.setIsSeaLevelRef(toAbsolute ? 1 : 0);
+                    }
+                }
             }
             // Converting can leave a waypoint under the terrain, which would fly the
             // mission into the ground, so it is reported rather than silently corrected.
