@@ -593,6 +593,137 @@
     background-color: #ebe7e7;
 }
 
+.mission-control-wplist {
+    top: 165px;
+    left: .5em;
+}
+.ol-touch .mission-control-wplist {
+    top: 165px;
+}
+
+/* The waypoint list floats over the bottom of the map, which fills the column height */
+.tab-mission-control #missionPlannerWpList {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    z-index: 1001;
+    max-height: 55%;
+    display: flex;
+    flex-direction: column;
+    opacity: 0.97;
+}
+
+.tab-mission-control #missionPlannerWpList > .spacer {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.tab-mission-control .wpListTableWrapper {
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.tab-mission-control .waypointListTable {
+    width: 100%;
+    text-align: center;
+    font-size: 12px;
+}
+
+.tab-mission-control .waypointListTable input[type="text"] {
+    font-size: 11px;
+    width: 95%;
+    min-width: 60px;
+}
+
+.tab-mission-control .waypointListTable select {
+    font-size: 11px;
+    width: 95%;
+}
+
+.tab-mission-control .waypointListTable thead {
+    display: table-header-group !important;
+}
+
+.tab-mission-control .waypointListTable thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.tab-mission-control .waypointListTable thead tr {
+    border-left: 1px solid #e4e4e4;
+    border-right: 1px solid #e4e4e4;
+    background-color: #828885;
+    color: #FFF;
+}
+
+.tab-mission-control .waypointListTable thead tr th {
+    background-color: #828885;
+}
+
+.tab-mission-control .waypointListTable td,
+.tab-mission-control .waypointListTable th {
+    padding: 2px;
+}
+
+.tab-mission-control .waypointListTable tr:nth-child(even) td {
+    background-color: #ebe7e7;
+}
+
+.tab-mission-control .waypointListTable tr.wpListRowSelected td {
+    background-color: #fff3cc;
+}
+
+.tab-mission-control .waypointListTable .wpListSelectCell {
+    cursor: pointer;
+    font-weight: bold;
+    color: #3394b5;
+}
+
+.tab-mission-control .waypointListTable .wpListAltMeters {
+    display: block;
+    font-size: 9px;
+    color: #888;
+}
+
+.tab-mission-control .wpListBulkBar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 3px 0 6px 0;
+    font-size: 12px;
+}
+
+.tab-mission-control .wpListBulkBar input {
+    width: 70px;
+}
+
+.tab-mission-control .wpListBulkSeparator {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background-color: #ccc;
+    margin: 0 8px;
+}
+
+.tab-mission-control .wpListApplyBtn {
+    background-color: #37a8db;
+    border-radius: 3px;
+    border: 1px solid #3394b5;
+    color: #fff;
+    cursor: pointer;
+    padding: 1px 8px;
+    transition: all ease 0.2s;
+}
+
+.tab-mission-control .wpListApplyBtn:hover {
+    background-color: #3394b5;
+}
+
 
 .tab-mission-control .btnMenu a {
     /*  common styles for content toolbar buttons */

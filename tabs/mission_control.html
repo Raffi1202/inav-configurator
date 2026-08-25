@@ -616,6 +616,49 @@
                     <div id="missionMap3DWarning" role="alert" aria-live="polite"></div>
                     <div id="missionMap3DHelp" data-i18n="missionMap3DEmpty"></div>
                 </div>
+                <div id="missionPlannerWpList" class="gui_box grey" style="display: none">
+                    <div class="gui_box_titlebar">
+                        <div class="spacer_box_title" data-i18n="missionWpListHead"></div>
+                        <div class="btnMenu btnMenuIcon  save_btn">
+                            <a id="cancelWpList" class="ic_cancel" href="#" i18n_title="missionTitleCancel"></a>
+                        </div>
+                    </div>
+                    <div class="spacer">
+                        <div class="wpListBulkBar">
+                            <span data-i18n="missionWpListBulkAlt"></span>
+                            <select id="wpListBulkAltMode">
+                                <option value="set" data-i18n="missionWpListBulkSet"></option>
+                                <option value="add" data-i18n="missionWpListBulkAdd"></option>
+                            </select>
+                            <input id="wpListBulkAltValue" type="number" value="0">
+                            <a id="wpListBulkAltApply" class="wpListApplyBtn" href="#" data-i18n="missionWpListApply"></a>
+                            <span class="wpListBulkSeparator"></span>
+                            <span data-i18n="missionWpListBulkSpeed"></span>
+                            <input id="wpListBulkSpeedValue" type="number" value="0">
+                            <a id="wpListBulkSpeedApply" class="wpListApplyBtn" href="#" data-i18n="missionWpListApply"></a>
+                        </div>
+                        <div class="wpListTableWrapper">
+                            <table class="waypointListTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px">#</th>
+                                        <th class="wpListMissionColumn" style="width: 40px" data-i18n="missionWpListMission"></th>
+                                        <th style="width: 110px" data-i18n="missionWpListType"></th>
+                                        <th data-i18n="missionWpListLat"></th>
+                                        <th data-i18n="missionWpListLon"></th>
+                                        <th data-i18n="missionWpListAlt"></th>
+                                        <th data-i18n="missionWpListP1"></th>
+                                        <th data-i18n="missionWpListP2"></th>
+                                        <th style="width: 40px" data-i18n="missionWpListSlr" i18n_title="missionSeaLevelRef"></th>
+                                        <th style="width: 40px">&nbsp;</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="waypointListTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div id="missionPlannerElevation" class="gui_box grey" style="display: none">
                 <div class="gui_box_titlebar">

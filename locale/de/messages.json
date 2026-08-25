@@ -4988,6 +4988,48 @@
     "missionSeaLevelRef": {
         "message": "Meeresspiegel-Ref.: "
     },
+    "missionWpListHead": {
+        "message": "Wegpunkt-Liste"
+    },
+    "missionWpListMission": {
+        "message": "M#"
+    },
+    "missionWpListType": {
+        "message": "Typ"
+    },
+    "missionWpListLat": {
+        "message": "Lat"
+    },
+    "missionWpListLon": {
+        "message": "Lon"
+    },
+    "missionWpListAlt": {
+        "message": "Höhe (cm)"
+    },
+    "missionWpListP1": {
+        "message": "P1 / Speed"
+    },
+    "missionWpListP2": {
+        "message": "P2"
+    },
+    "missionWpListSlr": {
+        "message": "MSR"
+    },
+    "missionWpListBulkAlt": {
+        "message": "Höhe (cm) für alle:"
+    },
+    "missionWpListBulkSpeed": {
+        "message": "Speed (cm/s) für alle:"
+    },
+    "missionWpListBulkSet": {
+        "message": "Setzen"
+    },
+    "missionWpListBulkAdd": {
+        "message": "Addieren"
+    },
+    "missionWpListApply": {
+        "message": "Anwenden"
+    },
     "missionElevation": {
         "message": "Geländehöhe (m):"
     },

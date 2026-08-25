@@ -4995,6 +4995,48 @@
     "missionSeaLevelRef": {
         "message": "Sea level Ref: "
     },
+    "missionWpListHead": {
+        "message": "Waypoint List"
+    },
+    "missionWpListMission": {
+        "message": "M#"
+    },
+    "missionWpListType": {
+        "message": "Type"
+    },
+    "missionWpListLat": {
+        "message": "Lat"
+    },
+    "missionWpListLon": {
+        "message": "Lon"
+    },
+    "missionWpListAlt": {
+        "message": "Alt (cm)"
+    },
+    "missionWpListP1": {
+        "message": "P1 / Speed"
+    },
+    "missionWpListP2": {
+        "message": "P2"
+    },
+    "missionWpListSlr": {
+        "message": "SLR"
+    },
+    "missionWpListBulkAlt": {
+        "message": "Altitude (cm) for all:"
+    },
+    "missionWpListBulkSpeed": {
+        "message": "Speed (cm/s) for all:"
+    },
+    "missionWpListBulkSet": {
+        "message": "Set"
+    },
+    "missionWpListBulkAdd": {
+        "message": "Add"
+    },
+    "missionWpListApply": {
+        "message": "Apply"
+    },
     "missionElevation": {
         "message": "Elevation (m):"
     },
