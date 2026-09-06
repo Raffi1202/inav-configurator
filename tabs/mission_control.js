@@ -792,8 +792,9 @@ missionControlTab.initialize = function (callback) {
         bankAngleDeg: FirmwareDefaults.bankAngleDeg,
         bankCeilingDeg: 0,
         wpRadiusCm: FirmwareDefaults.waypointRadiusCm,
-        loiterRadiusCm: 0,
-        approachLengthCm: 0,
+        // null = not yet read; 0 is a valid configured value for both settings.
+        loiterRadiusCm: null,
+        approachLengthCm: null,
         speedFromFc: false,
         turnSmoothing: TurnSmoothing.OFF
     };
@@ -1196,12 +1197,12 @@ missionControlTab.initialize = function (callback) {
             },
             function (callback) {
                 mspHelper.getSetting("nav_fw_loiter_radius").then((data) => {
-                    if (data) simulation.loiterRadiusCm = readNumericSetting(data, 0);
+                    if (data) simulation.loiterRadiusCm = readNumericSetting(data, null);
                 }).catch(() => {}).then(() => callback());
             },
             function (callback) {
                 mspHelper.getSetting("nav_fw_land_approach_length").then((data) => {
-                    if (data) simulation.approachLengthCm = readNumericSetting(data, 0);
+                    if (data) simulation.approachLengthCm = readNumericSetting(data, null);
                 }).catch(() => {}).then(() => callback());
             },
             // The absolute ceiling on roll. nav_fw_bank_angle is what navigation asks
@@ -3699,11 +3700,11 @@ function iconKey(filename) {
         const homeAltM = homeMarkers.length && HOME.getAlt() !== 'N/A' ? Number(HOME.getAlt()) : undefined;
         const {route: withAltitudes, homeKnown, absolute} = resolveRouteAltitudes(planned, homeAltM);
 
-        // Offline these are still zero — they are only read from a connected flight
+        // Offline these are still null — they are only read from a connected flight
         // controller — so the firmware's own defaults stand in rather than letting
-        // the approach quietly disappear.
-        const approachLengthCm = simulation.approachLengthCm || FirmwareDefaults.approachLengthCm;
-        const loiterRadiusCm = simulation.loiterRadiusCm || FirmwareDefaults.loiterRadiusCm;
+        // the approach quietly disappear. ?? (not ||) so a configured 0 survives.
+        const approachLengthCm = simulation.approachLengthCm ?? FirmwareDefaults.approachLengthCm;
+        const loiterRadiusCm = simulation.loiterRadiusCm ?? FirmwareDefaults.loiterRadiusCm;
 
         const {route, landingsWithoutApproach, suspectLandings} = withLandingApproaches(
             withAltitudes,
@@ -3729,7 +3730,7 @@ function iconKey(filename) {
             approachAnchoredAtLanding: !homeKnown && absolute
                 && route.some((point) => point.isApproach),
             bankCeilingBinds,
-            usingDefaults: !simulation.approachLengthCm || !simulation.loiterRadiusCm,
+            usingDefaults: simulation.approachLengthCm === null || simulation.loiterRadiusCm === null,
             parameters: {
                 speedMs: simulation.speedMs,
                 bankAngleDeg: bankCeilingBinds ? simulation.bankCeilingDeg : simulation.bankAngleDeg,
