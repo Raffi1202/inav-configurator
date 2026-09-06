@@ -69,6 +69,29 @@ describe('Mission Planner 3D points', () => {
         assert.equal(points[1].endsMission, false);
     });
 
+    test('ends the route at an attached RTH even without an end-of-mission marker', () => {
+        const points = getMission3DPoints([
+            waypoint({number: 0}),
+            waypoint({number: 1, action: MWNP.WPTYPE.RTH, attached: true}),
+            waypoint({number: 2})
+        ], null);
+
+        assert.equal(points.length, 2);
+        assert.equal(points[0].endsMission, true);
+        assert.equal(points[1].endsMission, false);
+    });
+
+    test('ends the route at an unattached LAND even without an end-of-mission marker', () => {
+        const points = getMission3DPoints([
+            waypoint({number: 0}),
+            waypoint({number: 1, action: MWNP.WPTYPE.LAND}),
+            waypoint({number: 2})
+        ], null);
+
+        assert.equal(points[1].endsMission, true);
+        assert.equal(points[2].endsMission, false);
+    });
+
     test('accepts a home on the equator or prime meridian but rejects an unset 0,0 home', () => {
         const equatorPoints = getMission3DPoints([waypoint()], home({lat: 0, lon: 8}));
         const unsetPoints = getMission3DPoints([waypoint()], home({lat: 0, lon: 0}));
@@ -114,6 +137,19 @@ describe('Mission Planner 3D route terrain checks', () => {
         ]);
 
         assert.deepEqual(segments.map((segment) => segment.map((point) => point.number)), [[1, 2], [3, 4]]);
+    });
+
+    test('splits the route at a mid-mission RTH so points after it terrain-check as a separate leg', () => {
+        const points = getMission3DPoints([
+            waypoint({number: 0}),
+            waypoint({number: 1}),
+            waypoint({number: 2, action: MWNP.WPTYPE.RTH, attached: true}),
+            waypoint({number: 3}),
+            waypoint({number: 4})
+        ], null);
+        const segments = getMission3DRouteSegments(points);
+
+        assert.deepEqual(segments.map((segment) => segment.map((point) => point.number)), [[0, 1], [3, 4]]);
     });
 
     test('marks a route collision when only an interior terrain sample intersects the route', () => {

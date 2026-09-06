@@ -21,12 +21,13 @@ export function getMission3DPoints(waypoints, home) {
     const points = [];
 
     waypoints.forEach((waypoint) => {
+        const action = waypoint.getAction();
+
         if (!waypoint.isAttached()) {
             const layerNumber = waypoint.getLayerNumber();
             const lat = Number(waypoint.getLatMap());
             const lon = Number(waypoint.getLonMap());
             const altitude = Number(waypoint.getAlt()) / 100;
-            const action = waypoint.getAction();
 
             if (Number.isFinite(lat) && Number.isFinite(lon) && Number.isFinite(altitude)) {
                 points.push({
@@ -43,7 +44,15 @@ export function getMission3DPoints(waypoints, home) {
             }
         }
 
-        if (waypoint.getEndMission() === 0xA5 && points.length) {
+        // RTH and an unattached LAND end the flown route wherever they occur —
+        // same firmware semantics js/mission_sim.js's getSimulationRoute() stops
+        // at — not just when the multi-mission end marker happens to be set on
+        // that slot.
+        const terminatesRoute = action === MWNP.WPTYPE.RTH
+            || (action === MWNP.WPTYPE.LAND && !waypoint.isAttached())
+            || waypoint.getEndMission() === 0xA5;
+
+        if (terminatesRoute && points.length) {
             points.at(-1).endsMission = true;
         }
     });
