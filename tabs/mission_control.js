@@ -64,6 +64,10 @@ import elevationFetch from './../js/elevationFetch';
 
 import html from'./mission_control.html?raw';
 
+function waypointPositionKey(wp) {
+    return wp.getLatMap() + ',' + wp.getLonMap();
+}
+
 function extractKmlFromKmz(source) {
     const data = source instanceof Uint8Array ? source : new Uint8Array(source);
     const unzipped = unzipSync(data);
@@ -3566,9 +3570,6 @@ function iconKey(filename) {
        into the number, so only the sanity check applies, as before. The landing approach
        of a LAND waypoint is settled separately, on its own reference. */
     const pendingWaypointDrags = new WeakMap();
-    function waypointPositionKey(wp) {
-        return wp.getLatMap() + ',' + wp.getLonMap();
-    }
 
     async function settleDraggedWaypoint(wp, isSelected) {
         if (!wp) return;
