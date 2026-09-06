@@ -1559,6 +1559,8 @@ function iconKey(filename) {
         cameraGuard.setInputAction(releaseGesture, ScreenSpaceEventType.PINCH_START);
 
         let destroyed = false;
+        let visible = false;
+        let resizeFrame = null;
         let updateSequence = 0;
         let terrainProvider = viewer.terrainProvider;
         let terrainLoadFailed = false;
@@ -1566,6 +1568,27 @@ function iconKey(filename) {
         let lastHome = null;
         let terrainCacheSignature = null;
         let terrainCache = null;
+
+        function cancelResize() {
+            if (resizeFrame === null) return;
+            cancelAnimationFrame(resizeFrame);
+            resizeFrame = null;
+        }
+
+        function scheduleResize() {
+            if (destroyed || !visible || resizeFrame !== null) return;
+            resizeFrame = requestAnimationFrame(() => {
+                resizeFrame = null;
+                if (destroyed || !visible || !container.clientWidth || !container.clientHeight) return;
+                viewer.resize();
+                viewer.scene.requestRender();
+            });
+        }
+
+        // Follow the actual 3D layout, including changes after the view-mode switch.
+        // Coalesce notifications into one frame and leave the hidden viewer idle.
+        const resizeObserver = new ResizeObserver(scheduleResize);
+        resizeObserver.observe(container);
 
         function showEmptyMap() {
             hideMission3DTerrainWarning();
@@ -1875,29 +1898,28 @@ function iconKey(filename) {
         });
 
         return {
-            setVisible(visible) {
+            setVisible(isVisible) {
                 if (destroyed) return;
+                visible = isVisible;
                 viewer.useDefaultRenderLoop = visible;
                 if (!visible) {
+                    cancelResize();
                     updateSequence++;
                     return;
                 }
-                requestAnimationFrame(() => {
-                    if (destroyed) return;
-                    viewer.resize();
-                    viewer.scene.requestRender();
-                });
+                scheduleResize();
             },
             update(waypoints, home) {
                 lastWaypoints = waypoints;
                 lastHome = home;
                 renderMission(waypoints, home);
             },
-            resize() {
-                if (!destroyed) viewer.resize();
-            },
             destroy() {
+                if (destroyed) return;
                 destroyed = true;
+                visible = false;
+                resizeObserver.disconnect();
+                cancelResize();
                 updateSequence++;
                 cameraGuard.destroy();
                 if (!viewer.isDestroyed()) viewer.destroy();
@@ -4561,7 +4583,6 @@ function iconKey(filename) {
             let width = $("#missionMap canvas").width(), height = $("#missionMap canvas").height();
             if ((map.width_ != width) || (map.height_ != height)) map.updateSize();
             map.width_ = width; map.height_ = height;
-            if (mission3DViewer && missionMapViewMode === '3d') mission3DViewer.resize();
         }, 200);
 
         //////////////////////////////////////////////////////////////////////////
