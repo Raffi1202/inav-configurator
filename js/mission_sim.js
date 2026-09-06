@@ -21,12 +21,10 @@
  */
 
 import MWNP from './mwnp.js';
-import { ROUTE_ACTIONS } from './mission_3d.js';
+import { ROUTE_ACTIONS, routeTerminatesAt } from './mission_3d.js';
 
 const EARTH_RADIUS_M = 6371000;
 const GRAVITY_MSS = 9.81;
-
-const END_MISSION_MARKER = 0xA5;
 
 /*
  * The waypoints an aircraft actually flies through, as plain coordinates.
@@ -39,10 +37,9 @@ export function getSimulationRoute(waypoints) {
     const route = [];
 
     for (const waypoint of waypoints) {
-        // RTH ends the mission: the firmware leaves waypoint mode there and flies
-        // home, so anything after it is never flown as part of the route.
-        if (waypoint.getAction() === MWNP.WPTYPE.RTH) break;
-
+        // RTH is always attached (js/waypointCollection.js), so it never
+        // satisfies the push condition below regardless of where this check
+        // runs relative to it.
         if (!waypoint.isAttached() && ROUTE_ACTIONS.has(waypoint.getAction())) {
             const lat = Number(waypoint.getLatMap());
             const lon = Number(waypoint.getLonMap());
@@ -61,9 +58,10 @@ export function getSimulationRoute(waypoints) {
             }
         }
 
-        // A landing ends the mission wherever it sits, not just at the end.
-        if (waypoint.getAction() === MWNP.WPTYPE.LAND && !waypoint.isAttached()) break;
-        if (waypoint.getEndMission() === END_MISSION_MARKER) break;
+        // RTH, an unattached LAND, or the multi-mission end marker all end the
+        // mission wherever they occur — shared with js/mission_3d.js so the 3D
+        // terrain view can't drift out of sync on what ends a route.
+        if (routeTerminatesAt(waypoint)) break;
     }
 
     return route;
