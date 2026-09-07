@@ -1958,6 +1958,7 @@ function iconKey(filename) {
             $('#missionMap').show();
         }
         missionMapViewMode = is3D ? '3d' : '2d';
+        $('.tab-mission-control').toggleClass('mission-map-3d', is3D);
         $('#missionMap2DButton').toggleClass('active', !is3D).attr('aria-pressed', String(!is3D));
         $('#missionMap3DButton').toggleClass('active', is3D).attr('aria-pressed', String(is3D));
         $('#geo_info').toggle(!is3D);
