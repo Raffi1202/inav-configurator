@@ -85,58 +85,76 @@ export function getMission3DPoints(waypoints, home) {
     return points;
 }
 
-// Walks the mission the way the firmware flies it and returns every leg in the order it is first
-// flown, as pairs of waypoint storage numbers. A JUMP is taken as often as its repeat count says
-// (an infinite one once, which already covers all of its ground), so waypoints a forward jump
-// skips get no legs and a jump with zero repeats adds none. The leg a jump adds from the point it
-// is attached to into its target carries the jump, so the caller can draw it apart. RTH, LAND and
-// the sub-mission end marker close the current chain; points after them start a new one, like
-// the 2D editor draws them. `maximumSteps` bounds the walk against malformed jump loops.
-export function getMission3DFlightLegs(waypoints, maximumSteps = waypoints.length * 64) {
-    const indexByNumber = new Map(waypoints.map((waypoint, index) => [waypoint.getNumber(), index]));
-    const remainingJumps = new Map();
-    const seen = new Set();
-    const legs = [];
-    let current = null;
-    let pendingJump = null;
-    let missionStartNumber = 0;
+// Records the leg from the current point to `number` the first time it is flown, then moves on.
+function addMission3DLeg(walk, number) {
+    const key = `${walk.current}->${number}`;
+    if (walk.current !== null && walk.current !== number && !walk.seen.has(key)) {
+        walk.seen.add(key);
+        walk.legs.push({from: walk.current, to: number, jump: walk.pendingJump});
+    }
+    walk.pendingJump = null;
+    walk.current = number;
+}
 
-    for (let index = 0, steps = 0; index < waypoints.length && steps < maximumSteps; index++, steps++) {
+// Takes the JUMP at `index` if it still has repeats left and a usable target, and returns the
+// index to continue from; -1 when the jump is not taken. A JUMP is taken as often as its repeat
+// count says, an infinite one once, which already covers all of its ground.
+function takeMission3DJump(walk, waypoint, index) {
+    const targetNumber = walk.missionStartNumber + Number(waypoint.getP1());
+    const targetIndex = walk.indexByNumber.get(targetNumber);
+    const target = walk.waypoints[targetIndex];
+    if (!target || !isRouteWaypoint(target) || targetNumber === walk.current) return -1;
+
+    const repeat = Number(waypoint.getP2());
+    const remaining = walk.remainingJumps.get(index) ?? (repeat === -1 ? 1 : Math.max(0, repeat));
+    if (remaining <= 0) return -1;
+
+    walk.remainingJumps.set(index, remaining - 1);
+    walk.pendingJump = {repeat};
+    return targetIndex;
+}
+
+// Walks the mission the way the firmware flies it and returns every leg in the order it is first
+// flown, as pairs of waypoint storage numbers. Waypoints a forward jump skips get no legs and a
+// jump with zero repeats adds none. The leg a jump adds from the point it is attached to into its
+// target carries the jump, so the caller can draw it apart. RTH, LAND and the sub-mission end
+// marker close the current chain; points after them start a new one, like the 2D editor draws
+// them. `maximumSteps` bounds the walk against malformed jump loops.
+export function getMission3DFlightLegs(waypoints, maximumSteps = waypoints.length * 64) {
+    const walk = {
+        waypoints,
+        indexByNumber: new Map(waypoints.map((waypoint, index) => [waypoint.getNumber(), index])),
+        remainingJumps: new Map(),
+        seen: new Set(),
+        legs: [],
+        current: null,
+        pendingJump: null,
+        missionStartNumber: 0
+    };
+    let index = 0;
+
+    for (let steps = 0; index < waypoints.length && steps < maximumSteps; steps++) {
         const waypoint = waypoints[index];
 
         if (isRouteWaypoint(waypoint)) {
-            const number = waypoint.getNumber();
-            const key = `${current}->${number}`;
-            if (current !== null && current !== number && !seen.has(key)) {
-                seen.add(key);
-                legs.push({from: current, to: number, jump: pendingJump});
-            }
-            pendingJump = null;
-            current = number;
-        } else if (isJumpWaypoint(waypoint) && current !== null) {
-            const targetNumber = missionStartNumber + Number(waypoint.getP1());
-            const targetIndex = indexByNumber.get(targetNumber);
-            const target = waypoints[targetIndex];
-            const repeat = Number(waypoint.getP2());
-            if (!remainingJumps.has(index)) remainingJumps.set(index, repeat === -1 ? 1 : Math.max(0, repeat));
-            const remaining = remainingJumps.get(index);
-
-            if (remaining > 0 && target && isRouteWaypoint(target) && targetNumber !== current) {
-                remainingJumps.set(index, remaining - 1);
-                pendingJump = {repeat};
-                index = targetIndex - 1;
+            addMission3DLeg(walk, waypoint.getNumber());
+        } else if (isJumpWaypoint(waypoint) && walk.current !== null) {
+            const targetIndex = takeMission3DJump(walk, waypoint, index);
+            if (targetIndex >= 0) {
+                index = targetIndex;
                 continue;
             }
         }
 
         if (terminatesMission3DRoute(waypoint)) {
-            current = null;
-            pendingJump = null;
+            walk.current = null;
+            walk.pendingJump = null;
         }
-        if (waypoint.getEndMission() === 0xA5) missionStartNumber = waypoint.getNumber() + 1;
+        if (waypoint.getEndMission() === 0xA5) walk.missionStartNumber = waypoint.getNumber() + 1;
+        index++;
     }
 
-    return legs;
+    return walk.legs;
 }
 
 export function getMission3DPlannedHeight(point, groundHeight, homeGroundHeight) {
