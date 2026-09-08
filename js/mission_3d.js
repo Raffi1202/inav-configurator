@@ -19,6 +19,11 @@ function hasValidHomePosition(home) {
 
 export function getMission3DPoints(waypoints, home) {
     const points = [];
+    const jumps = [];
+    let lastRoutePoint = null;
+    // Storage number of the first entry of the current sub-mission. A JUMP's P1 counts from
+    // there, the same way repaintLine4Waypoints() resolves it for the 2D editor.
+    let missionStartNumber = 0;
 
     waypoints.forEach((waypoint) => {
         const action = waypoint.getAction();
@@ -30,8 +35,9 @@ export function getMission3DPoints(waypoints, home) {
             const altitude = Number(waypoint.getAlt()) / 100;
 
             if (Number.isFinite(lat) && Number.isFinite(lon) && Number.isFinite(altitude)) {
-                points.push({
+                const point = {
                     number: layerNumber === 'undefined' ? waypoint.getNumber() : layerNumber,
+                    waypointNumber: waypoint.getNumber(),
                     lat,
                     lon,
                     altitude,
@@ -39,27 +45,49 @@ export function getMission3DPoints(waypoints, home) {
                     action,
                     isHome: false,
                     isRoutePoint: ROUTE_ACTIONS.has(action),
-                    endsMission: false
-                });
+                    endsMission: false,
+                    jumps: []
+                };
+                points.push(point);
+                if (point.isRoutePoint) lastRoutePoint = point;
             }
+        } else if (action === MWNP.WPTYPE.JUMP && lastRoutePoint) {
+            // The jump is flown from the route point it is attached to back (or forward) to its
+            // target. Resolve the target once every point is known, since it may come later.
+            jumps.push({
+                source: lastRoutePoint,
+                targetWaypointNumber: missionStartNumber + Number(waypoint.getP1()),
+                repeat: Number(waypoint.getP2())
+            });
         }
 
         // RTH and an unattached LAND end the flown route wherever they occur —
         // same firmware semantics js/mission_sim.js's getSimulationRoute() stops
         // at — not just when the multi-mission end marker happens to be set on
         // that slot.
+        const endsSubMission = waypoint.getEndMission() === 0xA5;
         const terminatesRoute = action === MWNP.WPTYPE.RTH
             || (action === MWNP.WPTYPE.LAND && !waypoint.isAttached())
-            || waypoint.getEndMission() === 0xA5;
+            || endsSubMission;
 
         if (terminatesRoute && points.length) {
             points.at(-1).endsMission = true;
         }
+        if (terminatesRoute) lastRoutePoint = null;
+        if (endsSubMission) missionStartNumber = waypoint.getNumber() + 1;
+    });
+
+    const pointsByWaypointNumber = new Map(points.map((point) => [point.waypointNumber, point]));
+    jumps.forEach((jump) => {
+        const target = pointsByWaypointNumber.get(jump.targetWaypointNumber);
+        if (!target?.isRoutePoint || target === jump.source) return;
+        jump.source.jumps.push({targetWaypointNumber: target.waypointNumber, repeat: jump.repeat});
     });
 
     if (hasValidHomePosition(home)) {
         points.unshift({
             number: 'H',
+            waypointNumber: null,
             lat: home.getLatMap(),
             lon: home.getLonMap(),
             altitude: Number(home.getAlt()) || 0,
@@ -67,7 +95,8 @@ export function getMission3DPoints(waypoints, home) {
             action: 0,
             isHome: true,
             isRoutePoint: false,
-            endsMission: false
+            endsMission: false,
+            jumps: []
         });
     }
 
@@ -95,6 +124,29 @@ export function getMission3DRouteSegments(points) {
 
     if (segment.length) segments.push(segment);
     return segments;
+}
+
+// The legs a JUMP adds to the flown route: from the point carrying the jump to its target.
+// Repeated legs after the target reuse edges the route already samples, so the return leg is the
+// only new ground to check. The leg is drawn whether or not the repeat count is zero, matching the
+// "Repeat x" line of the 2D editor.
+export function getMission3DJumpSegments(points) {
+    const pointsByWaypointNumber = new Map(points.map((point) => [point.waypointNumber, point]));
+    const segments = [];
+
+    points.forEach((point) => {
+        (point.jumps || []).forEach((jump) => {
+            const target = pointsByWaypointNumber.get(jump.targetWaypointNumber);
+            if (!target || target === point) return;
+            segments.push({start: point, end: target, repeat: jump.repeat});
+        });
+    });
+
+    return segments;
+}
+
+export function getMission3DJumpLabel(repeat) {
+    return 'Repeat x' + (repeat === -1 ? ' infinite' : String(repeat));
 }
 
 export function getMission3DSamplingSpacing(edgeDistances, minimumSpacing = 30, maximumSamples = 4096) {

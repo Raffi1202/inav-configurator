@@ -85,6 +85,8 @@ import { Geozone, GeozoneVertex, GeozoneType, GeozoneShapes, GeozoneFenceAction 
 import store from './../js/store';
 import dialog from '../js/dialog';
 import {
+    getMission3DJumpLabel,
+    getMission3DJumpSegments,
     getMission3DPlannedHeight,
     getMission3DPointLabel,
     getMission3DPoints,
@@ -1494,6 +1496,7 @@ function iconKey(filename) {
 
     const mission3DRouteColor = Color.fromCssColorString('#13b5ea');
     const mission3DCollisionColor = Color.fromCssColorString('#e02f2f');
+    const mission3DJumpColor = Color.fromCssColorString('#e935d6');
 
     function createMission3DViewer(container) {
         buildModuleUrl.setBaseUrl('./');
@@ -1634,9 +1637,17 @@ function iconKey(filename) {
         }
 
         async function sampleRouteTerrain(renderedPoints) {
-            const routeSegments = getMission3DRouteSegments(renderedPoints).filter((segment) => segment.length > 1);
-            const routeEdges = routeSegments.flatMap((segment, segmentIndex) => segment.slice(1).map((end, index) => {
-                const start = segment[index];
+            // Consecutive route legs first, then the leg each JUMP adds back to its target. Every
+            // segment keeps its samples apart so the jump legs can be drawn in their own colour.
+            const routeSegments = [
+                ...getMission3DRouteSegments(renderedPoints)
+                    .filter((segment) => segment.length > 1)
+                    .map((points) => ({points, jump: null})),
+                ...getMission3DJumpSegments(renderedPoints)
+                    .map((jump) => ({points: [jump.start, jump.end], jump}))
+            ];
+            const routeEdges = routeSegments.flatMap((segment, segmentIndex) => segment.points.slice(1).map((end, index) => {
+                const start = segment.points[index];
                 const geodesic = new EllipsoidGeodesic(
                     Cartographic.fromDegrees(start.lon, start.lat),
                     Cartographic.fromDegrees(end.lon, end.lat)
@@ -1651,7 +1662,7 @@ function iconKey(filename) {
                 };
             }));
             const samplingSpacing = getMission3DSamplingSpacing(routeEdges.map((edge) => edge.distance));
-            const routeSamples = routeSegments.map(() => []);
+            const routeSamples = routeSegments.map((segment) => ({jump: segment.jump, samples: []}));
             const terrainSamplePositions = [];
             const terrainSampleDescriptors = [];
 
@@ -1673,7 +1684,7 @@ function iconKey(filename) {
                         terrainClearanceAvailable: edge.terrainClearanceAvailable
                     };
 
-                    routeSamples[edge.segmentIndex].push(descriptor);
+                    routeSamples[edge.segmentIndex].samples.push(descriptor);
                     if (descriptor.terrainClearanceAvailable) {
                         terrainSampleDescriptors.push(descriptor);
                         terrainSamplePositions.push(Cartographic.clone(position));
@@ -1698,7 +1709,7 @@ function iconKey(filename) {
                     : 0;
                 sample.clearance = sample.plannedHeight - terrainHeight;
             });
-            routeSamples.flat().forEach((sample) => {
+            routeSamples.flatMap((segment) => segment.samples).forEach((sample) => {
                 if (!sample.terrainClearanceAvailable) sample.clearance = Number.POSITIVE_INFINITY;
                 sample.cartesian = Cartesian3.fromRadians(
                     sample.position.longitude,
@@ -1778,18 +1789,37 @@ function iconKey(filename) {
         function renderRouteTerrain(routeSamples) {
             let hasTerrainCollision = false;
 
-            routeSamples.forEach((samples) => {
+            routeSamples.forEach(({samples, jump}) => {
+                const clearColor = jump ? mission3DJumpColor : mission3DRouteColor;
                 getMission3DRouteRuns(samples).forEach((run) => {
                     hasTerrainCollision ||= run.collidesWithTerrain;
                     viewer.entities.add({
                         polyline: {
                             positions: run.samples.map(getMission3DSampleCartesian),
                             width: run.collidesWithTerrain ? 6 : 4,
-                            material: run.collidesWithTerrain ? mission3DCollisionColor : mission3DRouteColor,
+                            material: run.collidesWithTerrain ? mission3DCollisionColor : clearColor,
                             depthFailMaterial: run.collidesWithTerrain ? mission3DCollisionColor.withAlpha(0.9) : undefined
                         }
                     });
                 });
+
+                // The repeat count sits mid-leg, like the label on the 2D editor's jump line.
+                if (jump && samples.length) {
+                    viewer.entities.add({
+                        position: getMission3DSampleCartesian(samples[Math.floor(samples.length / 2)]),
+                        label: {
+                            text: getMission3DJumpLabel(jump.repeat),
+                            font: '600 12px Segoe UI, Calibri, sans-serif',
+                            fillColor: mission3DJumpColor,
+                            outlineColor: Color.BLACK,
+                            outlineWidth: 3,
+                            style: LabelStyle.FILL_AND_OUTLINE,
+                            verticalOrigin: VerticalOrigin.BOTTOM,
+                            pixelOffset: new Cartesian2(0, -6),
+                            disableDepthTestDistance: Number.POSITIVE_INFINITY
+                        }
+                    });
+                }
             });
 
             return hasTerrainCollision;

@@ -3,6 +3,8 @@ import { describe, test } from 'node:test';
 
 import MWNP from '../js/mwnp.js';
 import {
+    getMission3DJumpLabel,
+    getMission3DJumpSegments,
     getMission3DPlannedHeight,
     getMission3DPointLabel,
     getMission3DPoints,
@@ -18,6 +20,8 @@ function waypoint({
     lat = 47,
     lon = 8,
     altitude = 5000,
+    p1 = 0,
+    p2 = 0,
     p3 = 0,
     attached = false,
     endMission = 0
@@ -29,6 +33,8 @@ function waypoint({
         getLatMap: () => lat,
         getLonMap: () => lon,
         getAlt: () => altitude,
+        getP1: () => p1,
+        getP2: () => p2,
         getP3: () => p3,
         isAttached: () => attached,
         getEndMission: () => endMission
@@ -192,5 +198,83 @@ describe('Mission Planner 3D route terrain checks', () => {
     test('uses detailed sampling for normal routes and caps very long routes', () => {
         assert.equal(getMission3DSamplingSpacing([300, 600]), 30);
         assert.ok(getMission3DSamplingSpacing([100000, 100000]) > 30);
+    });
+});
+
+describe('Mission Planner 3D jump legs', () => {
+    test('records a JUMP on the route point it is attached to and resolves its target', () => {
+        const points = getMission3DPoints([
+            waypoint({number: 0, lat: 47.0}),
+            waypoint({number: 1, lat: 47.1}),
+            waypoint({number: 2, lat: 47.2}),
+            waypoint({number: 3, action: MWNP.WPTYPE.JUMP, attached: true, p1: 0, p2: 2})
+        ], null);
+        const segments = getMission3DJumpSegments(points);
+
+        assert.deepEqual(points.map((point) => point.jumps.length), [0, 0, 1]);
+        assert.equal(segments.length, 1);
+        assert.equal(segments[0].start.number, 2);
+        assert.equal(segments[0].end.number, 0);
+        assert.equal(segments[0].repeat, 2);
+    });
+
+    test('resolves the JUMP target relative to the start of its own sub-mission', () => {
+        const points = getMission3DPoints([
+            waypoint({number: 0, lat: 47.0}),
+            waypoint({number: 1, lat: 47.1, endMission: 0xA5}),
+            waypoint({number: 2, lat: 48.0}),
+            waypoint({number: 3, lat: 48.1}),
+            waypoint({number: 4, action: MWNP.WPTYPE.JUMP, attached: true, p1: 0, p2: -1})
+        ], null);
+        const segments = getMission3DJumpSegments(points);
+
+        assert.equal(segments.length, 1);
+        assert.equal(segments[0].start.waypointNumber, 3);
+        assert.equal(segments[0].end.waypointNumber, 2);
+        assert.equal(segments[0].repeat, -1);
+    });
+
+    test('ignores a JUMP whose target is missing, itself, or not a route point', () => {
+        const points = getMission3DPoints([
+            waypoint({number: 0, lat: 47.0}),
+            waypoint({number: 1, lat: 47.1, action: MWNP.WPTYPE.SET_POI}),
+            waypoint({number: 2, lat: 47.2}),
+            waypoint({number: 3, action: MWNP.WPTYPE.JUMP, attached: true, p1: 1}),
+            waypoint({number: 4, action: MWNP.WPTYPE.JUMP, attached: true, p1: 2}),
+            waypoint({number: 5, action: MWNP.WPTYPE.JUMP, attached: true, p1: 9})
+        ], null);
+
+        assert.deepEqual(points.map((point) => point.jumps.length), [0, 0, 0]);
+        assert.deepEqual(getMission3DJumpSegments(points), []);
+    });
+
+    test('drops a JUMP that follows an RTH, since the route already ended there', () => {
+        const points = getMission3DPoints([
+            waypoint({number: 0, lat: 47.0}),
+            waypoint({number: 1, lat: 47.1}),
+            waypoint({number: 2, action: MWNP.WPTYPE.RTH, attached: true}),
+            waypoint({number: 3, action: MWNP.WPTYPE.JUMP, attached: true, p1: 0})
+        ], null);
+
+        assert.deepEqual(points.map((point) => point.jumps.length), [0, 0]);
+    });
+
+    test('resolves jump legs on rendered copies of the points, not only the originals', () => {
+        const points = getMission3DPoints([
+            waypoint({number: 0, lat: 47.0}),
+            waypoint({number: 1, lat: 47.1}),
+            waypoint({number: 2, action: MWNP.WPTYPE.JUMP, attached: true, p1: 0, p2: 3})
+        ], home({lat: 46.9, lon: 8}));
+        const rendered = points.map((point) => ({...point, plannedHeight: 500}));
+        const segments = getMission3DJumpSegments(rendered);
+
+        assert.equal(segments.length, 1);
+        assert.equal(segments[0].start, rendered[2]);
+        assert.equal(segments[0].end, rendered[1]);
+    });
+
+    test('formats the repeat label like the 2D editor', () => {
+        assert.equal(getMission3DJumpLabel(3), 'Repeat x3');
+        assert.equal(getMission3DJumpLabel(-1), 'Repeat x infinite');
     });
 });
