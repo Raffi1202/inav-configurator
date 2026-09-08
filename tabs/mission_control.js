@@ -85,13 +85,13 @@ import { Geozone, GeozoneVertex, GeozoneType, GeozoneShapes, GeozoneFenceAction 
 import store from './../js/store';
 import dialog from '../js/dialog';
 import {
+    getMission3DFlightLegs,
+    getMission3DFlightSegments,
     getMission3DJumpLabel,
-    getMission3DJumpSegments,
     getMission3DPlannedHeight,
     getMission3DPointLabel,
     getMission3DPoints,
     getMission3DRouteRuns,
-    getMission3DRouteSegments,
     getMission3DSamplingSpacing
 } from './../js/mission_3d';
 
@@ -1636,16 +1636,9 @@ function iconKey(filename) {
             return {groundHeights, samplingFailed};
         }
 
-        async function sampleRouteTerrain(renderedPoints) {
-            // Consecutive route legs first, then the leg each JUMP adds back to its target. Every
-            // segment keeps its samples apart so the jump legs can be drawn in their own colour.
-            const routeSegments = [
-                ...getMission3DRouteSegments(renderedPoints)
-                    .filter((segment) => segment.length > 1)
-                    .map((points) => ({points, jump: null})),
-                ...getMission3DJumpSegments(renderedPoints)
-                    .map((jump) => ({points: [jump.start, jump.end], jump}))
-            ];
+        async function sampleRouteTerrain(renderedPoints, flightLegs) {
+            // One segment per chain of flown legs, plus one per JUMP leg so it can be drawn apart.
+            const routeSegments = getMission3DFlightSegments(renderedPoints, flightLegs);
             const routeEdges = routeSegments.flatMap((segment, segmentIndex) => segment.points.slice(1).map((end, index) => {
                 const start = segment.points[index];
                 const geodesic = new EllipsoidGeodesic(
@@ -1845,6 +1838,7 @@ function iconKey(filename) {
             hideMission3DTerrainWarning();
 
             const points = getMission3DPoints(waypoints, home);
+            const flightLegs = getMission3DFlightLegs(waypoints);
             const missionPoints = points.filter((point) => !point.isHome);
             if (!missionPoints.length) {
                 showEmptyMap();
@@ -1854,7 +1848,7 @@ function iconKey(filename) {
 
             $('#missionMap3DHelp').hide();
 
-            const signature = JSON.stringify(points);
+            const signature = JSON.stringify({points, flightLegs});
             const cache = terrainCacheSignature === signature ? terrainCache : null;
             // A cache hit answers straight away. A miss goes through samplePointTerrain, which asks
             // the terrain provider only when a real one is loaded, but awaits either way, so on a
@@ -1872,7 +1866,7 @@ function iconKey(filename) {
             const missingHomeReference = !hasHome && missionPoints.some((point) => !point.absoluteAltitude);
             const {displayPositions, renderedPoints} = renderMissionPoints(points, groundHeights, homeGroundHeight, hasHome);
 
-            const routeTerrain = cache ? cache.routeTerrain : await sampleRouteTerrain(renderedPoints);
+            const routeTerrain = cache ? cache.routeTerrain : await sampleRouteTerrain(renderedPoints, flightLegs);
             if (destroyed || sequence !== updateSequence) return;
             terrainSamplingFailed ||= routeTerrain.samplingFailed;
             if (!cache && !terrainSamplingFailed && !(terrainProvider instanceof EllipsoidTerrainProvider)) {
