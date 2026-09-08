@@ -17,90 +17,107 @@ function hasValidHomePosition(home) {
     return Number.isFinite(lat) && Number.isFinite(lon) && !(lat === 0 && lon === 0);
 }
 
-export function getMission3DPoints(waypoints, home) {
-    const points = [];
-    const jumps = [];
-    let lastRoutePoint = null;
-    // Storage number of the first entry of the current sub-mission. A JUMP's P1 counts from
-    // there, the same way repaintLine4Waypoints() resolves it for the 2D editor.
-    let missionStartNumber = 0;
+function buildMission3DPoint(waypoint) {
+    const layerNumber = waypoint.getLayerNumber();
+    const lat = Number(waypoint.getLatMap());
+    const lon = Number(waypoint.getLonMap());
+    const altitude = Number(waypoint.getAlt()) / 100;
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || !Number.isFinite(altitude)) return null;
 
-    waypoints.forEach((waypoint) => {
-        const action = waypoint.getAction();
+    const action = waypoint.getAction();
+    return {
+        number: layerNumber === 'undefined' ? waypoint.getNumber() : layerNumber,
+        waypointNumber: waypoint.getNumber(),
+        lat,
+        lon,
+        altitude,
+        absoluteAltitude: (waypoint.getP3() & (1 << MWNP.P3.ALT_TYPE)) !== 0,
+        action,
+        isHome: false,
+        isRoutePoint: ROUTE_ACTIONS.has(action),
+        endsMission: false,
+        jumps: []
+    };
+}
 
-        if (!waypoint.isAttached()) {
-            const layerNumber = waypoint.getLayerNumber();
-            const lat = Number(waypoint.getLatMap());
-            const lon = Number(waypoint.getLonMap());
-            const altitude = Number(waypoint.getAlt()) / 100;
+function buildMission3DHomePoint(home) {
+    return {
+        number: 'H',
+        waypointNumber: null,
+        lat: home.getLatMap(),
+        lon: home.getLonMap(),
+        altitude: Number(home.getAlt()) || 0,
+        absoluteAltitude: true,
+        action: 0,
+        isHome: true,
+        isRoutePoint: false,
+        endsMission: false,
+        jumps: []
+    };
+}
 
-            if (Number.isFinite(lat) && Number.isFinite(lon) && Number.isFinite(altitude)) {
-                const point = {
-                    number: layerNumber === 'undefined' ? waypoint.getNumber() : layerNumber,
-                    waypointNumber: waypoint.getNumber(),
-                    lat,
-                    lon,
-                    altitude,
-                    absoluteAltitude: (waypoint.getP3() & (1 << MWNP.P3.ALT_TYPE)) !== 0,
-                    action,
-                    isHome: false,
-                    isRoutePoint: ROUTE_ACTIONS.has(action),
-                    endsMission: false,
-                    jumps: []
-                };
-                points.push(point);
-                if (point.isRoutePoint) lastRoutePoint = point;
-            }
-        } else if (action === MWNP.WPTYPE.JUMP && lastRoutePoint) {
-            // The jump is flown from the route point it is attached to back (or forward) to its
-            // target. Resolve the target once every point is known, since it may come later.
-            jumps.push({
-                source: lastRoutePoint,
-                targetWaypointNumber: missionStartNumber + Number(waypoint.getP1()),
-                repeat: Number(waypoint.getP2())
-            });
-        }
+// RTH and an unattached LAND end the flown route wherever they occur — same firmware semantics
+// js/mission_sim.js's getSimulationRoute() stops at — not just when the multi-mission end marker
+// happens to be set on that slot.
+function terminatesMission3DRoute(waypoint) {
+    const action = waypoint.getAction();
+    return action === MWNP.WPTYPE.RTH
+        || (action === MWNP.WPTYPE.LAND && !waypoint.isAttached())
+        || waypoint.getEndMission() === 0xA5;
+}
 
-        // RTH and an unattached LAND end the flown route wherever they occur —
-        // same firmware semantics js/mission_sim.js's getSimulationRoute() stops
-        // at — not just when the multi-mission end marker happens to be set on
-        // that slot.
-        const endsSubMission = waypoint.getEndMission() === 0xA5;
-        const terminatesRoute = action === MWNP.WPTYPE.RTH
-            || (action === MWNP.WPTYPE.LAND && !waypoint.isAttached())
-            || endsSubMission;
+function isMission3DJump(waypoint) {
+    return waypoint.isAttached() && waypoint.getAction() === MWNP.WPTYPE.JUMP;
+}
 
-        if (terminatesRoute && points.length) {
-            points.at(-1).endsMission = true;
-        }
-        if (terminatesRoute) lastRoutePoint = null;
-        if (endsSubMission) missionStartNumber = waypoint.getNumber() + 1;
-    });
+// Folds one waypoint into the route being built. `missionStartNumber` is the storage number of the
+// first entry of the current sub-mission: a JUMP's P1 counts from there, the same way
+// repaintLine4Waypoints() resolves it for the 2D editor.
+function addMission3DWaypoint(route, waypoint) {
+    const point = waypoint.isAttached() ? null : buildMission3DPoint(waypoint);
 
+    if (point) {
+        route.points.push(point);
+        if (point.isRoutePoint) route.lastRoutePoint = point;
+    } else if (isMission3DJump(waypoint) && route.lastRoutePoint) {
+        // The jump is flown from the route point it is attached to back (or forward) to its
+        // target. The target is resolved once every point is known, since it may come later.
+        route.jumps.push({
+            source: route.lastRoutePoint,
+            targetWaypointNumber: route.missionStartNumber + Number(waypoint.getP1()),
+            repeat: Number(waypoint.getP2())
+        });
+    }
+
+    if (terminatesMission3DRoute(waypoint)) {
+        const lastPoint = route.points.at(-1);
+        if (lastPoint) lastPoint.endsMission = true;
+        route.lastRoutePoint = null;
+    }
+    if (waypoint.getEndMission() === 0xA5) route.missionStartNumber = waypoint.getNumber() + 1;
+}
+
+function attachMission3DJumps(points, jumps) {
     const pointsByWaypointNumber = new Map(points.map((point) => [point.waypointNumber, point]));
+
     jumps.forEach((jump) => {
         const target = pointsByWaypointNumber.get(jump.targetWaypointNumber);
         if (!target?.isRoutePoint || target === jump.source) return;
         jump.source.jumps.push({targetWaypointNumber: target.waypointNumber, repeat: jump.repeat});
     });
+}
+
+export function getMission3DPoints(waypoints, home) {
+    const route = {points: [], jumps: [], lastRoutePoint: null, missionStartNumber: 0};
+
+    waypoints.forEach((waypoint) => addMission3DWaypoint(route, waypoint));
+    attachMission3DJumps(route.points, route.jumps);
 
     if (hasValidHomePosition(home)) {
-        points.unshift({
-            number: 'H',
-            waypointNumber: null,
-            lat: home.getLatMap(),
-            lon: home.getLonMap(),
-            altitude: Number(home.getAlt()) || 0,
-            absoluteAltitude: true,
-            action: 0,
-            isHome: true,
-            isRoutePoint: false,
-            endsMission: false,
-            jumps: []
-        });
+        route.points.unshift(buildMission3DHomePoint(home));
     }
 
-    return points;
+    return route.points;
 }
 
 export function getMission3DPlannedHeight(point, groundHeight, homeGroundHeight) {
