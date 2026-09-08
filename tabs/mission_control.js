@@ -2639,12 +2639,14 @@ function iconKey(filename) {
             HOME.setLat(Math.round(Number($(this).val()) * 10000000));
             cleanHomeLayers();
             renderHomeOnMap();
+            updateMission3D();
         });
 
         $(".home-lon").val(HOME.getLonMap()).on('change', function () {
             HOME.setLon(Math.round(Number($(this).val()) * 10000000));
             cleanHomeLayers();
             renderHomeOnMap();
+            updateMission3D();
         });
 
         if (HOME.getLatMap() == 0 && HOME.getLonMap() == 0) {
@@ -2715,6 +2717,7 @@ function iconKey(filename) {
         renderHomeTable();
         cleanHomeLayers();
         renderHomeOnMap();
+        updateMission3D();
         plotElevation();
     }
 
