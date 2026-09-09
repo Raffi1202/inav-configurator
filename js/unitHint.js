@@ -30,15 +30,23 @@ const UNIT_HINTS = {
 
 function formatNumber(value, decimals) {
     let text = value.toFixed(decimals);
-    if (text.indexOf('.') !== -1) {
-        text = text.replace(/0+$/, '').replace(/\.$/, '');
+    if (text.includes('.')) {
+        // Drop trailing zeros and a then-dangling decimal point: "5.50" -> "5.5", "5.00" -> "5"
+        let end = text.length;
+        while (text[end - 1] === '0') {
+            end--;
+        }
+        if (text[end - 1] === '.') {
+            end--;
+        }
+        text = text.slice(0, end);
     }
     // toFixed() keeps the sign of tiny negatives ("-0"); drop it.
     return text === '-0' ? '0' : text;
 }
 
 export function hasUnitHint(unit) {
-    return Object.prototype.hasOwnProperty.call(UNIT_HINTS, unit);
+    return Object.hasOwn(UNIT_HINTS, unit);
 }
 
 /**
@@ -51,7 +59,7 @@ export function getUnitHint(unit, rawValue) {
         return null;
     }
 
-    const raw = typeof rawValue === 'string' ? parseFloat(rawValue) : rawValue;
+    const raw = typeof rawValue === 'string' ? Number.parseFloat(rawValue) : rawValue;
     if (!Number.isFinite(raw)) {
         return null;
     }
@@ -64,7 +72,7 @@ export function getUnitHint(unit, rawValue) {
     }
 
     const text = formatNumber(converted, hint.decimals);
-    const exact = Math.abs(parseFloat(text) - converted) <= Math.abs(converted) * 1e-9;
+    const exact = Math.abs(Number.parseFloat(text) - converted) <= Math.abs(converted) * 1e-9;
     // "= 5 m" when the conversion is exact, "≈ 44.4 km/h" when it was rounded.
     const relation = exact ? '= ' : '≈ ';
     // "2.5°" but "60 °C", "5 m".

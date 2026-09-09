@@ -645,6 +645,7 @@
 
 .tab-osd .settings label {
     display: block;
+    position: relative;
     width: 100%;
     border-bottom: 1px solid #ddd;
     margin-top: 5px;
@@ -657,11 +658,8 @@
 }
 
 /* The label text span has a fixed width, so a floated unit hint would push
-   the text onto its own line. Pin the hint to the right edge instead. */
-.tab-osd .settings label {
-    position: relative;
-}
-
+   the text onto its own line. Pin the hint to the right edge of the
+   (relatively positioned) label instead. */
 .tab-osd .settings label > .unit-hint {
     float: none;
     position: absolute;
