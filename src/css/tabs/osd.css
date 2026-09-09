@@ -669,6 +669,12 @@
     line-height: 20px;
 }
 
+/* Keep the label text clear of the pinned hint: long translations wrap
+   inside the span instead of running underneath the hint */
+.tab-osd .settings label > .unit-hint ~ .i18n-replaced {
+    width: calc(100% - 220px);
+}
+
 .tab-osd .settings input {
     width: 75px;
     padding-left: 3px;
