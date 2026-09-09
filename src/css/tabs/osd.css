@@ -656,6 +656,21 @@
     padding-bottom: 0;
 }
 
+/* The label text span has a fixed width, so a floated unit hint would push
+   the text onto its own line. Pin the hint to the right edge instead. */
+.tab-osd .settings label {
+    position: relative;
+}
+
+.tab-osd .settings label > .unit-hint {
+    float: none;
+    position: absolute;
+    top: 0;
+    right: 16px;
+    padding-right: 8px;
+    line-height: 20px;
+}
+
 .tab-osd .settings input {
     width: 75px;
     padding-left: 3px;
