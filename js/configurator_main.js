@@ -818,9 +818,9 @@ $(function() {
 
         // Copy the active control / battery / mixer profile onto another slot (MSP2_INAV_COPY_PROFILE)
         const profileCopyKinds = {
-            0: { label: 'copyProfileKindControl', current: () => parseInt(profile_e.val()), count: () => profile_e.find('option').length },
-            1: { label: 'copyProfileKindBattery', current: () => parseInt(batteryprofile_e.val()), count: () => batteryprofile_e.find('option').length },
-            2: { label: 'copyProfileKindMixer', current: () => parseInt(mixerprofile_e.val()), count: () => mixerprofile_e.find('option').length },
+            0: { label: 'copyProfileKindControl', current: () => Number.parseInt(profile_e.val()), count: () => profile_e.find('option').length },
+            1: { label: 'copyProfileKindBattery', current: () => Number.parseInt(batteryprofile_e.val()), count: () => batteryprofile_e.find('option').length },
+            2: { label: 'copyProfileKindMixer', current: () => Number.parseInt(mixerprofile_e.val()), count: () => mixerprofile_e.find('option').length },
         };
         let profileCopyModal = null;
         let profileCopyRequest = null;
@@ -828,7 +828,7 @@ $(function() {
         $('#profiles_wrapper_global .profile-copy').on('click', function (event) {
             event.preventDefault();
 
-            const type = parseInt($(this).attr('data-profile-type'));
+            const type = Number.parseInt($(this).attr('data-profile-type'));
             const kind = profileCopyKinds[type];
             const fromIndex = kind.current();
             const $to = $('#copy-profile-to').empty();
@@ -861,7 +861,7 @@ $(function() {
         });
 
         $(document).on('click', '#copy-profile-confirm', function () {
-            const toIndex = parseInt($('#copy-profile-to').val());
+            const toIndex = Number.parseInt($('#copy-profile-to').val());
             if (!profileCopyRequest || Number.isNaN(toIndex)) {
                 return;
             }
