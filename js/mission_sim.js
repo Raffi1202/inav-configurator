@@ -539,7 +539,7 @@ export function simulateGroundTrack(points, params = {}) {
     const events = [];
     const warnings = [];
 
-    if (points.length < 2 || !isPositive(speedMs) || !isPositive(timeStepS)) {
+    if (!canSimulate(points, speedMs, timeStepS)) {
         return {samples, events, warnings, summary: emptySummary(radiusM)};
     }
 
@@ -613,7 +613,7 @@ export function simulateGroundTrack(points, params = {}) {
             distanceBetween(position, target)
         );
 
-        if (Number.isFinite(target.stopAtAltM) && altitudeM <= target.stopAtAltM) {
+        if (reachedGlideAltitude(target, altitudeM)) {
             events.push({
                 t: elapsedS,
                 type: SimEvent.GLIDE,
@@ -658,6 +658,19 @@ export function simulateGroundTrack(points, params = {}) {
             waypointsReached: events.filter((event) => event.type === SimEvent.REACHED).length
         }
     };
+}
+
+// Whether there is a track to integrate at all: a leg needs two points, and a
+// speed or time step that is not a real positive number would advance the
+// aircraft by NaN and fill the track with unusable samples.
+function canSimulate(points, speedMs, timeStepS) {
+    return points.length >= 2 && isPositive(speedMs) && isPositive(timeStepS);
+}
+
+// The commanded descent has reached the altitude where the firmware hands over
+// to its pitch-held glide phase, so the modelled track stops here.
+function reachedGlideAltitude(target, altitudeM) {
+    return Number.isFinite(target.stopAtAltM) && altitudeM <= target.stopAtAltM;
 }
 
 // Whether the active waypoint is done with, and why.

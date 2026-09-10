@@ -5875,34 +5875,40 @@ function iconKey(filename) {
         /////////////////////////////////////////////
         // Flight path simulation
         /////////////////////////////////////////////
-        $('#simulationSpeed').val(simulation.speedMs);
-        // The model is parameterised from the flight controller; without one it
-        // could only guess. Offline the feature stays out of the way entirely and
-        // the 3D view shows the plan alone.
-        $('#simulateMission').toggle(CONFIGURATOR.connectionValid);
-        if (!CONFIGURATOR.connectionValid) simulation.enabled = false;
+        wireSimulationControls();
 
+        // Wiring the simulation controls in one place keeps initMap's own body
+        // to the map it builds. Declared here, next to the call, because the
+        // whole block is about one feature and nothing else in initMap needs it.
+        function wireSimulationControls() {
+            $('#simulationSpeed').val(simulation.speedMs);
+            // The model is parameterised from the flight controller; without one it
+            // could only guess. Offline the feature stays out of the way entirely and
+            // the 3D view shows the plan alone.
+            $('#simulateMission').toggle(CONFIGURATOR.connectionValid);
+            if (!CONFIGURATOR.connectionValid) simulation.enabled = false;
 
-        // Namespaced and released first: the tab can be entered more than once,
-        // and a delegated handler would otherwise pile up on every visit and keep
-        // answering out of the previous closure.
-        $(document).off('click.mcSimulate').on('click.mcSimulate', '#simulateMissionButton, #simulateMission', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            simulation.enabled = !simulation.enabled;
-            $('#simulateMission').toggleClass('active', simulation.enabled);
-            repaintSimulation();
-            updateMission3D();
-        });
-
-        $(document).off('change.mcSimulate input.mcSimulate')
-            .on('change.mcSimulate input.mcSimulate', '#simulationSpeed', function () {
-                const speed = Number($(this).val());
-                if (!Number.isFinite(speed) || speed <= 0) return;
-                simulation.speedMs = speed;
+            // Namespaced and released first: the tab can be entered more than once,
+            // and a delegated handler would otherwise pile up on every visit and keep
+            // answering out of the previous closure.
+            $(document).off('click.mcSimulate').on('click.mcSimulate', '#simulateMissionButton, #simulateMission', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                simulation.enabled = !simulation.enabled;
+                $('#simulateMission').toggleClass('active', simulation.enabled);
                 repaintSimulation();
                 updateMission3D();
             });
+
+            $(document).off('change.mcSimulate input.mcSimulate')
+                .on('change.mcSimulate input.mcSimulate', '#simulationSpeed', function () {
+                    const speed = Number($(this).val());
+                    if (!Number.isFinite(speed) || speed <= 0) return;
+                    simulation.speedMs = speed;
+                    repaintSimulation();
+                    updateMission3D();
+                });
+        }
 
         function closeAddressSearchDialog() {
             $('#addressSearchDialog, #addressSearchBackdrop').remove();
