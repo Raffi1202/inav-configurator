@@ -6420,8 +6420,8 @@ function iconKey(filename) {
                                 }
                                 mission.put(point);
                             } else if (node['#name'].match(/fwapproach/i) && node.$) {
-                                var approachData = parseFwApproachAttributes(node.$);
-                                var approachSlot = resolveFwApproachSlot(approachData, FC.SAFEHOMES.getMaxSafehomeCount(), FC.FW_APPROACH.getMaxFwApproachCount());
+                                const approachData = parseFwApproachAttributes(node.$);
+                                const approachSlot = resolveFwApproachSlot(approachData, FC.SAFEHOMES.getMaxSafehomeCount(), FC.FW_APPROACH.getMaxFwApproachCount());
                                 if (approachSlot >= 0) {
                                     FC.FW_APPROACH.updateFwApproach(new FwApproach(approachSlot,
                                                                                    approachData.approachAltAsl,

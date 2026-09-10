@@ -9,7 +9,7 @@
  */
 
 function toInteger(value, fallback = 0) {
-    const number = parseInt(value, 10);
+    const number = Number.parseInt(value, 10);
 
     return Number.isFinite(number) ? number : fallback;
 }
