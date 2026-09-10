@@ -2057,11 +2057,11 @@ function iconKey(filename) {
     function loadSettings() {
         // These are read from the FC every time this tab is opened, the stored copy
         // is only a fallback for the offline case.
-        const fcProvidedSettings = ['fwApproachLength', 'maxDistSH', 'fwLoiterRadius'];
+        const fcProvidedSettings = new Set(['fwApproachLength', 'maxDistSH', 'fwLoiterRadius']);
         const missionPlannerSettings = store.get('missionPlannerSettings', false);
         if (missionPlannerSettings) {
             Object.keys(missionPlannerSettings).forEach(function (key) {
-                if (!isOffline && fcProvidedSettings.includes(key) && Number.isFinite(settings[key])) {
+                if (!isOffline && fcProvidedSettings.has(key) && Number.isFinite(settings[key])) {
                     // Keep the value just read from the FC, the stored one is outdated
                     // as soon as the setting was changed on another tab.
                     return;
