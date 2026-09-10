@@ -28,7 +28,7 @@ function readNameList(data, cursor) {
         }
         let name = '';
         for (let c = 0; c < length; c++) {
-            name += String.fromCharCode(data.getUint8(cursor.offset++));
+            name += String.fromCodePoint(data.getUint8(cursor.offset++));
         }
         names.push(name);
     }
