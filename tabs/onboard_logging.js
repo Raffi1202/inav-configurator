@@ -194,8 +194,18 @@ onboardLoggingTab.initialize = function (callback) {
 
     function populateLoggingRates() {
         var
-            userRateGCD = gcd(FC.BLACKBOX.blackboxRateNum, FC.BLACKBOX.blackboxRateDenom),
-            userRate = {num: FC.BLACKBOX.blackboxRateNum / userRateGCD, denom: FC.BLACKBOX.blackboxRateDenom / userRateGCD};
+            rateNum = FC.BLACKBOX.blackboxRateNum,
+            rateDenom = FC.BLACKBOX.blackboxRateDenom;
+
+        // A flight controller that reports no usable rate logs every iteration
+        if (!(rateNum > 0) || !(rateDenom > 0)) {
+            rateNum = 1;
+            rateDenom = 1;
+        }
+
+        var
+            userRateGCD = gcd(rateNum, rateDenom),
+            userRate = {num: rateNum / userRateGCD, denom: rateDenom / userRateGCD};
 
         // Offer a reasonable choice of logging rates (if people want weird steps they can use CLI)
         var
@@ -213,24 +223,31 @@ onboardLoggingTab.initialize = function (callback) {
                  {num: 7, denom: 8},
                  {num: 1, denom: 1},
             ],
-            loggingRatesSelect = $(".blackboxRate select");
+            loggingRatesSelect = $(".blackboxRate select").empty();
 
+        /* The rate configured on the aircraft may be outside that list, e.g. 1/256 set over the CLI.
+         * It has to be offered and preselected as well, otherwise the select box stays empty and
+         * saving the tab without touching it would quietly write a different rate.
+         */
         var
-            addedCurrentValue = false;
+            offeredRates = loggingRates.filter(function (rate) {
+                return rate.num != userRate.num || rate.denom != userRate.denom;
+            });
 
-        for (var i = 0; i < loggingRates.length; i++) {
-            if (!addedCurrentValue && userRate.num / userRate.denom <= loggingRates[i].num / loggingRates[i].denom) {
-                if (userRate.num / userRate.denom < loggingRates[i].num / loggingRates[i].denom) {
-                    var userPercent = Math.round(userRate.num / userRate.denom * 100);
-                    loggingRatesSelect.append('<option value="' + userRate.num + '/' + userRate.denom + '" data-percent="' + userPercent + '">'
-                            + userRate.num + '/' + userRate.denom + ' (' + userPercent + '%)</option>');
-                }
-                addedCurrentValue = true;
-            }
+        offeredRates.push(userRate);
+        offeredRates.sort(function (a, b) {
+            return a.num / a.denom - b.num / b.denom;
+        });
 
-            var percent = Math.round(loggingRates[i].num / loggingRates[i].denom * 100);
-            loggingRatesSelect.append('<option value="' + loggingRates[i].num + '/' + loggingRates[i].denom + '" data-percent="' + percent + '">'
-                + loggingRates[i].num + '/' + loggingRates[i].denom + ' (' + percent + '%)</option>');
+        for (var i = 0; i < offeredRates.length; i++) {
+            var
+                ratio = offeredRates[i].num / offeredRates[i].denom,
+                percent = Math.round(ratio * 100),
+                // Rates well below one percent would all be shown as 0%
+                label = ratio < 0.01 ? (ratio * 100).toFixed(1) : percent;
+
+            loggingRatesSelect.append('<option value="' + offeredRates[i].num + '/' + offeredRates[i].denom + '" data-percent="' + percent + '">'
+                + offeredRates[i].num + '/' + offeredRates[i].denom + ' (' + label + '%)</option>');
 
         }
         loggingRatesSelect.val(userRate.num + '/' + userRate.denom);
