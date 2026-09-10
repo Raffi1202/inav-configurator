@@ -297,11 +297,11 @@ function fillBaudrates($select, group, baudRate) {
     let offered = serialPortHelper.getBauds(group);
     let bauds = serialPortHelper.getBaudsIncluding(group, baudRate);
 
-    for (let i = 0; i < bauds.length; i++) {
-        let label = (offered.indexOf(bauds[i]) === -1)
-            ? (i18n.getMessage('portsBaudrateFromFC', [bauds[i]]) || bauds[i])
-            : bauds[i];
-        $select.append('<option value="' + bauds[i] + '">' + label + '</option>');
+    for (const baud of bauds) {
+        let label = offered.includes(baud)
+            ? baud
+            : (i18n.getMessage('portsBaudrateFromFC', [baud]) || baud);
+        $select.append('<option value="' + baud + '">' + label + '</option>');
     }
 
     if (baudRate !== undefined && baudRate !== null && baudRate !== '') {

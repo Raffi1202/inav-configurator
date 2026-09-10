@@ -360,7 +360,7 @@ const serialPortHelper = (function () {
         }
 
         let reported = String(baudrate);
-        if (bauds.indexOf(reported) !== -1) {
+        if (bauds.includes(reported)) {
             return bauds;
         }
 
