@@ -275,7 +275,7 @@ pidTuningTab.initialize = function (callback) {
                 shownBankIsFixedWing ? 'nav_mc_*' : 'nav_fw_*'
             ])).show();
         }).catch(function (err) {
-            console.debug('pid_tuning: pid_type setting not available:', err && err.message);
+            console.debug('pid_tuning: pid_type setting not available:', err?.message);
         });
 
         $("#ez_tune_enabled").prop('checked', FC.EZ_TUNE.enabled).trigger('change');
