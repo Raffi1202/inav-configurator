@@ -2485,7 +2485,7 @@ OSD.is_item_displayed = function(item, group) {
 
 OSD.get_item_name = function(item) {
     var name = i18n.getMessage('osdElement_' + item.name);
-    return name ? name : titleize(item.name);
+    return name || titleize(item.name);
 };
 
 // Elements whose hardware or feature is gone - a pitot set to NONE, an ESC
@@ -2496,7 +2496,7 @@ OSD.get_item_name = function(item) {
 // need a newer firmware, are left untouched: the GUI hides those without
 // knowing what the id currently holds.
 OSD.get_unreachable_items = function() {
-    if (!OSD.data || !OSD.data.items) {
+    if (!OSD.data?.items) {
         return [];
     }
     var reachable = [];
@@ -2516,7 +2516,7 @@ OSD.get_unreachable_items = function() {
     // The same id can be listed in several groups, and only one of them may be
     // gated off. Such an element is still reachable, so leave it alone.
     return unreachable.filter(function(item) {
-        return reachable.indexOf(item.id) == -1;
+        return !reachable.includes(item.id);
     });
 };
 
@@ -2526,9 +2526,9 @@ OSD.get_unreachable_items = function() {
 // back on brings the element back in its old spot, switched off.
 OSD.disable_unreachable_items = async function() {
     var items = OSD.get_unreachable_items();
-    for (var ii = 0; ii < items.length; ii++) {
-        OSD.data.items[items[ii].id].isVisible = false;
-        await OSD.saveItem(items[ii]);
+    for (const item of items) {
+        OSD.data.items[item.id].isVisible = false;
+        await OSD.saveItem(item);
     }
     return items;
 };
