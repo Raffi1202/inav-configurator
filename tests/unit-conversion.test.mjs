@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { globalSettings, UnitType } from '../js/globalSettings.js';
-import { fromDisplayUnits, getUnitMultiplier, toDisplayUnits } from '../js/unitConversion.js';
+import { fromDisplayUnits, getUnitMultiplier, smartRound, toDisplayUnits } from '../js/unitConversion.js';
 
 function withUnits(unitType, osdUnits, body) {
     const previousType = globalSettings.unitType;
@@ -128,4 +128,18 @@ test('values that cannot be converted are passed through', () => {
         assert.equal(toDisplayUnits('N/A', 'cm').text, 'N/A');
         assert.equal(Number.isNaN(fromDisplayUnits('N/A', 'cm')), true);
     });
+});
+
+test('display rounding hides conversion noise and snaps to round numbers', () => {
+    // 100 m is 328.08 ft, and the decimals move the value by well under 1%.
+    assert.equal(smartRound(328.08, 2), '328');
+    assert.equal(smartRound(9842.52, 2), '9843');
+
+    // Within 1 of a 10/100/1000 boundary the value snaps onto it, negative
+    // values included.
+    assert.equal(smartRound(999.4, 2), '1000');
+    assert.equal(smartRound(-999.4, 2), '-1000');
+
+    // Below two decimal places the value is left to toFixed().
+    assert.equal(smartRound(12.34, 1), '12.3');
 });

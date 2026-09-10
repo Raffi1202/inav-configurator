@@ -11,6 +11,33 @@
 import { globalSettings, UnitType } from './globalSettings.js';
 
 /**
+ * Round to the nearest 10, 100, etc. but only while the integer value is
+ * within 1 of a boundary (e.g. 999->1000, 1001->1000) and rounding changes
+ * the value by less than 1%. Absolute values are used for the boundary
+ * detection so negatives behave the same. Returns the roundest match as a
+ * string, or fallback when no magnitude fits.
+ */
+function roundToMagnitude(value, fallback) {
+    let best = fallback;
+    let intVal = Math.round(Math.abs(value));
+    for (let mag = 1; mag <= 3; mag++) {
+        let factor = Math.pow(10, mag);
+        let remainder = intVal % factor;
+        if (remainder <= 1 || remainder >= factor - 1) {
+            let rounded = Math.sign(value) * Math.round(Math.abs(value) / factor) * factor;
+            if (Math.abs(rounded - value) / Math.abs(value) < 0.01) {
+                best = rounded.toFixed(0);
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    return best;
+}
+
+/**
  * Round a converted value to fewer decimal places when doing so
  * changes the value by less than 1%. For example, 328.08 ft (from 100m)
  * becomes "328" and 9842.52 ft becomes "9843". Also rounds to the
@@ -24,31 +51,14 @@ function smartRound(value, decimalPlaces) {
     // Try removing decimal places (most aggressive first)
     let best = null;
     for (let dp = 0; dp <= decimalPlaces - 2; dp++) {
-        let rounded = parseFloat(value.toFixed(dp));
+        let rounded = Number.parseFloat(value.toFixed(dp));
         if (Math.abs(rounded - value) / Math.abs(value) < 0.01) {
             best = rounded.toFixed(dp);
             break;
         }
     }
-    // Try rounding to nearest 10, 100, etc. but only when the integer
-    // value is within 1 of a boundary (e.g. 999->1000, 1001->1000).
-    // Use absolute values for boundary detection to handle negatives.
     if (best !== null) {
-        let intVal = Math.round(Math.abs(value));
-        for (let mag = 1; mag <= 3; mag++) {
-            let factor = Math.pow(10, mag);
-            let remainder = intVal % factor;
-            if (remainder <= 1 || remainder >= factor - 1) {
-                let rounded = Math.sign(value) * Math.round(Math.abs(value) / factor) * factor;
-                if (Math.abs(rounded - value) / Math.abs(value) < 0.01) {
-                    best = rounded.toFixed(0);
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
+        best = roundToMagnitude(value, best);
     }
     return best !== null ? best : value.toFixed(decimalPlaces);
 }
@@ -399,7 +409,7 @@ function toDisplayUnits(value, inputUnit) {
     const multiplier = converted.multiplier;
     const numeric = Number(value);
 
-    if (typeof multiplier !== 'number' || !isFinite(numeric)) {
+    if (typeof multiplier !== 'number' || !Number.isFinite(numeric)) {
         return {
             value: numeric,
             text: String(value),
@@ -433,7 +443,7 @@ function fromDisplayUnits(value, inputUnit, precision = 0) {
     const multiplier = converted.multiplier;
     const numeric = Number(value);
 
-    if (typeof multiplier !== 'number' || !isFinite(numeric)) {
+    if (typeof multiplier !== 'number' || !Number.isFinite(numeric)) {
         return numeric;
     }
 

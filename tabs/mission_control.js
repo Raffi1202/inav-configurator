@@ -136,7 +136,7 @@ var dictOfLabelParameterPoint = {
 // setting. Their unit is appended to the label above and the field is
 // converted on the way in and out; every other parameter keeps the unit
 // spelled out in its own label.
-var dictOfUnitParameterPoint = {
+const dictOfUnitParameterPoint = {
     1:  {parameter1: MISSION_UNIT_SPEED},
     3:  {parameter2: MISSION_UNIT_SPEED},
     8:  {parameter1: MISSION_UNIT_SPEED}
@@ -4820,7 +4820,6 @@ function iconKey(filename) {
                 (async () => {
                     const elevationAtWP = await selectedMarker.getElevation(globalSettings);
                     $('#elevationValueAtWP').text(elevationAtWP);
-                    var altitude = altitudeFromDisplay($('#pointAlt').val());
 
                     if (P3Value != selectedMarker.getP3()) {
                         selectedMarker.setP3(P3Value);
