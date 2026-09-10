@@ -192,16 +192,32 @@ var MSP = {
         this.processData = cb;
     },
 
-    read: function (readInfo) {
+    /**
+     * Decodes incoming bytes and returns how many of them were consumed.
+     *
+     * With stopWhenIdle set, decoding stops as soon as the decoder sits between
+     * frames. A caller that takes the port over while a frame is half decoded
+     * (the CLI tab does, on tab entry) can use that to let the decoder finish
+     * the frame in progress and keep only the bytes after it.
+     *
+     * @param {{data: ArrayBuffer|Uint8Array}} readInfo
+     * @param {boolean} [stopWhenIdle]
+     * @returns {number} bytes taken from the front of readInfo.data
+     */
+    read: function (readInfo, stopWhenIdle) {
         var data;
         try {
             data = new Uint8Array(readInfo.data);
         } catch (e) {
             console.error('MSP read: Failed to create Uint8Array from readInfo.data:', e, 'readInfo:', readInfo);
-            return;
+            return 0;
         }
 
-        for (var i = 0; i < data.length; i++) {
+        var i = 0;
+        for (; i < data.length; i++) {
+            if (stopWhenIdle && this.state == this.decoder_states.IDLE) {
+                break;
+            }
             switch (this.state) {
                 case this.decoder_states.IDLE: // sync char 1
                     if (data[i] == this.symbols.BEGIN) {
@@ -346,6 +362,8 @@ var MSP = {
             }
         }
         this.last_received_timestamp = Date.now();
+
+        return i;
     },
 
     _initialize_read_buffer() {
