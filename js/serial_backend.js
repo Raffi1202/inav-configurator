@@ -583,7 +583,7 @@ var SerialBackend = (function () {
         // hand the CLI tab only what follows, instead of printing the tail of an
         // MSP response as junk. Nothing is taken once the FC has answered with
         // the CLI banner: from there on every byte is CLI output.
-        var mspBytes = CONFIGURATOR.cliValid ? 0 : MSP.read(info, true);
+        var mspBytes = CONFIGURATOR.cliValid ? 0 : MSP.read_until_idle(info);
         if (mspBytes === 0) {
             cliTab.read(info);
             return;
@@ -591,7 +591,7 @@ var SerialBackend = (function () {
 
         var rest = info.data.slice(mspBytes);
         if (rest.byteLength > 0) {
-            cliTab.read(Object.assign({}, info, { data: rest }));
+            cliTab.read({ ...info, data: rest });
         }
     }
 
