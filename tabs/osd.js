@@ -2450,7 +2450,9 @@ OSD.get_item = function(item_id) {
     return null;
 };
 
-OSD.is_item_displayed = function(item, group) {
+// Whether the connected FC knows this element at all. Says nothing about the
+// hardware or the features behind it, see OSD.is_item_displayed().
+OSD.is_item_supported = function(item) {
     if (!OSD.data.items[item.id]) {
         // FC has no data about this item, so
         // it doesn't support it.
@@ -2459,19 +2461,76 @@ OSD.is_item_displayed = function(item, group) {
     if (FC.getOsdDisabledFields().indexOf(item.name) != -1) {
         return false;
     }
+    if (item.min_version && !semver.gte(FC.CONFIG.flightControllerVersion, item.min_version)) {
+        return false;
+    }
+    return true;
+};
+
+OSD.is_item_displayed = function(item, group) {
+    if (!OSD.is_item_supported(item)) {
+        return false;
+    }
     if (!group) {
         return false;
     }
     if (typeof group.enabled === 'function' && group.enabled() === false) {
         return false;
     }
-    if (item.min_version && !semver.gte(FC.CONFIG.flightControllerVersion, item.min_version)) {
-        return false;
-    }
     if (typeof item.enabled === 'function' && item.enabled() === false) {
         return false;
     }
     return true;
+};
+
+OSD.get_item_name = function(item) {
+    var name = i18n.getMessage('osdElement_' + item.name);
+    return name ? name : titleize(item.name);
+};
+
+// Elements whose hardware or feature is gone - a pitot set to NONE, an ESC
+// telemetry port removed - are hidden from the element list and from the
+// preview, but the FC keeps drawing them and the GUI no longer offers a way to
+// switch them off. Returns the enabled items of the selected layout that are
+// unreachable for that reason. Elements the FC does not support at all, or that
+// need a newer firmware, are left untouched: the GUI hides those without
+// knowing what the id currently holds.
+OSD.get_unreachable_items = function() {
+    if (!OSD.data || !OSD.data.items) {
+        return [];
+    }
+    var reachable = [];
+    var unreachable = [];
+    OSD.constants.ALL_DISPLAY_GROUPS.forEach(function(group) {
+        group.items.forEach(function(item) {
+            if (!OSD.is_item_supported(item)) {
+                return;
+            }
+            if (OSD.is_item_displayed(item, group)) {
+                reachable.push(item.id);
+            } else if (OSD.data.items[item.id].isVisible && !unreachable.some(function(other) { return other.id == item.id; })) {
+                unreachable.push(item);
+            }
+        });
+    });
+    // The same id can be listed in several groups, and only one of them may be
+    // gated off. Such an element is still reachable, so leave it alone.
+    return unreachable.filter(function(item) {
+        return reachable.indexOf(item.id) == -1;
+    });
+};
+
+// Disables the unreachable elements of the selected layout on the FC. Only
+// called when the user saves, never on load, so nothing changes behind the
+// user's back. The position of each element is kept, so turning the hardware
+// back on brings the element back in its old spot, switched off.
+OSD.disable_unreachable_items = async function() {
+    var items = OSD.get_unreachable_items();
+    for (var ii = 0; ii < items.length; ii++) {
+        OSD.data.items[items[ii].id].isVisible = false;
+        await OSD.saveItem(items[ii]);
+    }
+    return items;
 };
 
 OSD.get_item_preview = function(item) {
@@ -3040,14 +3099,8 @@ OSD.GUI.updateFields = function(event) {
             var itemData = OSD.data.items[item.id];
             var checked = itemData.isVisible ? 'checked' : '';
             var $field = $('<div class="display-field field-' + item.id + '"/>');
-            var name = item.name;
-            var nameKey = 'osdElement_' + name;
-            var nameMessage = i18n.getMessage(nameKey);
-            if (nameMessage) {
-                name = nameMessage;
-            } else {
-                name = titleize(name);
-            }
+            var nameKey = 'osdElement_' + item.name;
+            var name = OSD.get_item_name(item);
             var searchTerm = osdSearch.val();
             if (searchTerm.length > 0 && !name.toLowerCase().includes(searchTerm.toLowerCase())) {
                 continue;
@@ -3704,7 +3757,11 @@ osdTab.initialize = function (callback) {
                 content: $('#fontmanagercontent')
             });
 
-            $('a.save').on('click', function () {
+            $('a.save').on('click', async function () {
+                var disabled = await OSD.disable_unreachable_items();
+                if (disabled.length > 0) {
+                    GUI.log(i18n.getMessage('osdElementsWithoutHardwareDisabled', [disabled.map(OSD.get_item_name).join(', ')]));
+                }
                 Settings.saveInputs(save_to_eeprom);
             });
 

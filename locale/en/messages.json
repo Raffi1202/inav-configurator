@@ -6788,6 +6788,9 @@
     "osdClearLayout": {
         "message": "Layout has been cleared"
     },
+    "osdElementsWithoutHardwareDisabled": {
+        "message": "Switched off elements without hardware or feature: $1. They keep their position and come back switched off when the hardware is enabled again."
+    },
     "failedToOpenSerialPort": {
         "message": "<span style=\"color: red\">Failed</span> to open serial port"
     },
