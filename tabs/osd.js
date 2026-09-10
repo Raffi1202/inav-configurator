@@ -2244,6 +2244,30 @@ OSD.constants = {
                     }
                 },
                 {
+                    name: 'CONTROL_PROFILE_NAME',
+                    id: 172,
+                    preview: function(osd_data) {
+                        const name = FC.PROFILE_NAMES?.control?.[FC.CONFIG.profile];
+                        return name ? name.toUpperCase() : FONT.symbol(SYM.PROFILE) + '1';
+                    }
+                },
+                {
+                    name: 'BATTERY_PROFILE_NAME',
+                    id: 173,
+                    preview: function(osd_data) {
+                        const name = FC.PROFILE_NAMES?.battery?.[FC.CONFIG.battery_profile];
+                        return name ? name.toUpperCase() : FONT.symbol(SYM.BATT) + '1';
+                    }
+                },
+                {
+                    name: 'MIXER_PROFILE_NAME',
+                    id: 174,
+                    preview: function(osd_data) {
+                        const name = FC.PROFILE_NAMES?.mixer?.[FC.CONFIG.mixer_profile];
+                        return name ? name.toUpperCase() : 'M1';
+                    }
+                },
+                {
                     name: 'ROLL_PIDS',
                     id: 16,
                     preview: 'ROL  40  30  20  23'
