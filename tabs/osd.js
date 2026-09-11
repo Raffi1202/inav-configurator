@@ -4751,6 +4751,12 @@ function updatePanServoPreview() {
     OSD.GUI.updatePreviews();
 }
 
+osdTab.onProfileNamesChanged = function () {
+    if (GUI.active_tab === osdTab && $('.tab-osd').length && OSD.data?.items) {
+        OSD.GUI.updatePreviews();
+    }
+};
+
 osdTab.cleanup = function (callback) {
     PortHandler.flush_callbacks();
 

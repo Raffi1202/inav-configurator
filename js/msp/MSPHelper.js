@@ -734,6 +734,7 @@ var mspHelper = (function () {
                 // null = firmware without the message (unsupported reply) or a malformed payload
                 FC.PROFILE_NAMES = dataHandler.unsupported ? null : parseProfileNames(data);
                 GUI.updateProfileNames();
+                GUI.active_tab?.onProfileNamesChanged?.();
                 break;
             case MSPCodes.MSP_DEBUGMSG:
                 for (var ii = 0; ii < data.byteLength; ii++) {
