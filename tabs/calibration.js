@@ -70,13 +70,19 @@ calibrationTab.initialize = function (callback) {
         mspHelper.loadSensorConfig,
         mspHelper.loadCalibrationData,
         function (callback) {
-            mspHelper.getSetting('mag_calibration_time').then(function (setting) {
+            let finished = false;
+            function finish(setting) {
+                if (finished) return;
+                finished = true;
+                timeout.remove('mag_calibration_time_load');
                 if (setting && setting.value > 0) {
                     magCalibrationTime = setting.value;
                 }
-            }).catch(function () {
-                // Firmware without the setting keeps MAG_CALIBRATION_TIME_DEFAULT.
-            }).then(callback);
+                callback();
+            }
+            // getSetting can remain pending after transport retries are exhausted.
+            timeout.add('mag_calibration_time_load', () => finish(), 5000);
+            mspHelper.getSetting('mag_calibration_time').then(finish, () => finish());
         }
     ]);
     loadChainer.setExitPoint(loadHtml);
@@ -347,6 +353,7 @@ calibrationTab.initialize = function (callback) {
 };
 
 calibrationTab.cleanup = function (callback) {
+    timeout.remove('mag_calibration_time_load');
     if (callback) callback();
 };
 
