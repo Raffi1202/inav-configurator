@@ -2525,10 +2525,16 @@ OSD.get_unreachable_items = function() {
 // user's back. The position of each element is kept, so turning the hardware
 // back on brings the element back in its old spot, switched off.
 OSD.disable_unreachable_items = async function() {
-    var items = OSD.get_unreachable_items();
+    const items = OSD.get_unreachable_items();
+    const layout = OSD.data.selected_layout;
+    const positions = OSD.data.items;
     for (const item of items) {
-        OSD.data.items[item.id].isVisible = false;
-        await OSD.saveItem(item);
+        const position = positions[item.id];
+        const result = await OSD.saveItem(item, undefined, layout, { ...position, isVisible: false });
+        if (!result || result.unsupported) {
+            throw new Error('OSD layout write failed');
+        }
+        position.isVisible = false;
     }
     return items;
 };
@@ -2669,10 +2675,14 @@ OSD.saveConfig = function(callback) {
     });
 };
 
-OSD.saveItem = function(item, callback) {
-    let pos = OSD.data.items[item.id];
-    let data = OSD.msp.encodeLayoutItem(OSD.data.selected_layout, item, pos);
-    return MSP.promise(MSPCodes.MSP2_INAV_OSD_SET_LAYOUT_ITEM, data).then(callback);
+OSD.saveItem = function(item, callback, layout = OSD.data.selected_layout, pos = OSD.data.items[item.id]) {
+    const data = OSD.msp.encodeLayoutItem(layout, item, pos);
+    return new Promise(function(resolve) {
+        // A refused write returns false without calling its transport callback.
+        if (MSP.send_message(MSPCodes.MSP2_INAV_OSD_SET_LAYOUT_ITEM, data, false, resolve) === false) {
+            resolve(false);
+        }
+    }).then(callback);
 };
 
 //noinspection JSUnusedLocalSymbols
@@ -3757,12 +3767,22 @@ osdTab.initialize = function (callback) {
                 content: $('#fontmanagercontent')
             });
 
+            let saving = false;
             $('a.save').on('click', async function () {
-                var disabled = await OSD.disable_unreachable_items();
-                if (disabled.length > 0) {
-                    GUI.log(i18n.getMessage('osdElementsWithoutHardwareDisabled', [disabled.map(OSD.get_item_name).join(', ')]));
+                if (saving) return;
+                saving = true;
+                try {
+                    const disabled = await OSD.disable_unreachable_items();
+                    if (disabled.length > 0) {
+                        GUI.log(i18n.getMessage('osdElementsWithoutHardwareDisabled', [disabled.map(OSD.get_item_name).join(', ')]));
+                    }
+                    Settings.saveInputs(save_to_eeprom);
+                } catch (error) {
+                    GUI.log(i18n.getMessage('osdLayoutSaveFailed'));
+                } finally {
+                    saving = false;
+                    OSD.GUI.updatePreviews();
                 }
-                Settings.saveInputs(save_to_eeprom);
             });
 
             // Initialise guides checkbox
