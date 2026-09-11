@@ -33,21 +33,25 @@ export function hasFwApproachData(approach) {
  * with a landing point. Landing altitude, approach altitude, approach direction
  * and the sea level reference are lost otherwise, because they are useful
  * without a landing heading. */
-export function buildFwApproachItems(approaches, maxSafehomeCount, maxFwApproachCount, landingMissionIndexes = []) {
+export function buildFwApproachItems(approaches, maxSafehomeCount, maxFwApproachCount, landingMissionIndexes = [], sourceMissionIndex = null) {
     const landingMissions = new Set(landingMissionIndexes);
     const items = [];
 
     for (let i = maxSafehomeCount; i < maxFwApproachCount; i++) {
         const approach = approaches[i];
         const missionIndex = i - maxSafehomeCount;
+        if (sourceMissionIndex !== null && missionIndex !== sourceMissionIndex) {
+            continue;
+        }
+        const fileMissionIndex = sourceMissionIndex === null ? missionIndex : 0;
 
         if (!approach || !(landingMissions.has(missionIndex) || hasFwApproachData(approach))) {
             continue;
         }
 
         items.push({ $: {
-            'index': missionIndex,
-            'no': approach.getNumber(),
+            'index': fileMissionIndex,
+            'no': maxSafehomeCount + fileMissionIndex,
             'approach-alt': approach.getApproachAltAsl(),
             'land-alt': approach.getLandAltAsl(),
             'approach-direction': approach.getApproachDirection() == 0 ? 'left' : 'right',
@@ -108,7 +112,7 @@ export function resolveFwApproachSlot(approach, maxSafehomeCount, maxFwApproachC
         slot = maxSafehomeCount + approach.index;
     } else if (Number.isInteger(approach.number) && approach.number >= 0) {
         // Elements without a mission index only carry the collection slot.
-        slot = approach.number < maxSafehomeCount ? maxSafehomeCount + approach.number : approach.number;
+        slot = approach.number;
     }
 
     return slot !== null && slot >= maxSafehomeCount && slot < maxFwApproachCount ? slot : -1;

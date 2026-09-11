@@ -6539,7 +6539,8 @@ function iconKey(filename) {
         data.fwapproach = buildFwApproachItems(FC.FW_APPROACH.get(),
                                                FC.SAFEHOMES.getMaxSafehomeCount(),
                                                FC.FW_APPROACH.getMaxFwApproachCount(),
-                                               landingMissionIndexes);
+                                               landingMissionIndexes,
+                                               multimission ? null : (mission.get()[0]?.getMultiMissionIdx() ?? 0));
 
         var builder = new xml2js.Builder({ 'rootName': 'mission', 'renderOpts': { 'pretty': true, 'indent': '\t', 'newline': '\n' } });
         var xml = builder.buildObject(data);

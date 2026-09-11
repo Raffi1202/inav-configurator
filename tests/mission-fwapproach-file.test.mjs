@@ -206,3 +206,23 @@ describe('Mission file fwapproach round trip', () => {
         assert.deepEqual(values(missionApproach(loaded)), values(approach));
     });
 });
+
+test('a selected later mission exports its approach as standalone mission zero', async () => {
+    const saved = approachCollection();
+    missionApproach(saved, 0).setApproachAltAsl(1000);
+    const selected = missionApproach(saved, 2);
+    selected.setApproachAltAsl(6200);
+    selected.setLandAltAsl(400);
+    const items = buildFwApproachItems(saved, MAX_SAFEHOMES, MAX_APPROACHES, [2], 2);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].$.index, 0);
+    assert.equal(items[0].$.no, MAX_SAFEHOMES);
+    const loaded = await loadInto(approachCollection(), toMissionXml(items));
+    assert.deepEqual(values(missionApproach(loaded, 0)), values(selected));
+    assert.equal(missionApproach(loaded, 2).getApproachAltAsl(), 0);
+});
+
+test('a no-only safehome slot cannot overwrite a mission approach', async () => {
+    const loaded = await loadInto(approachCollection(), '<mission><fwapproach no="7" approach-alt="6200"/></mission>');
+    loaded.forEach(approach => assert.equal(approach.getApproachAltAsl(), 0));
+});
