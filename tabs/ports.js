@@ -321,7 +321,14 @@ function updateDefaultBaud(baudSelect, column) {
     }
 
     const $baudSelect = section.find("." + column + "_baudrate");
-    $baudSelect.children('[value=' + baudRate + ']').prop('selected', true);
+    const currentBaud = $baudSelect.val();
+    const group = { telemetry: 'TELEMETRY', sensors: 'SENSOR', peripherals: 'PERIPHERAL' }[column];
+    const offeredBauds = serialPortHelper.getBauds(group);
+    const hasReportedRate = currentBaud !== null && !offeredBauds.includes(String(currentBaud));
+    // Preserve a reported rate unless the newly selected protocol mandates its baud.
+    if (!hasReportedRate || (rule && rule.lockedBaud)) {
+        $baudSelect.children('[value=' + baudRate + ']').prop('selected', true);
+    }
     $baudSelect.prop('disabled', !!(rule && rule.lockedBaud));
 }
 
