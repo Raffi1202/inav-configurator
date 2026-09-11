@@ -79,6 +79,7 @@ import SafehomeCollection from './../js/safehomeCollection';
 import { ApproachDirection, FwApproach } from './../js/fwApproach';
 import FwApproachCollection from './../js/fwApproachCollection';
 import SerialBackend from './../js/serial_backend';
+import { loadOsdUnits } from './../js/osdUnits';
 import { distanceOnLine, wrap_360, calculate_new_cooridatnes } from './../js/helpers';
 import interval from './../js/intervals';
 import { Geozone, GeozoneVertex, GeozoneType, GeozoneShapes, GeozoneFenceAction }  from './../js/geozone';
@@ -1203,7 +1204,9 @@ missionControlTab.initialize = function (callback) {
                 }).then(callback);
             }
         ]);
-        loadChainer.setExitPoint(loadHtml);
+        loadChainer.setExitPoint(function () {
+            loadOsdUnits().then(loadHtml);
+        });
         loadChainer.execute();
     } else {
 
