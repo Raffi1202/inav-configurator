@@ -647,6 +647,7 @@ $(function() {
                         $(this).val(apiKey);
                         store.set('openaip_api_key', apiKey);
                         globalSettings.openaipApiKey = apiKey;
+                        GUI.active_tab?.onOpenAipKeyChanged?.();
                     });
                     $('#google-api-key-test').on('click', testGoogleApiKey);
                     $('#google-api-key-help').on('click', showGoogleApiHelp);

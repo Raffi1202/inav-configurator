@@ -2981,15 +2981,36 @@ function iconKey(filename) {
         return String(globalSettings.openaipApiKey || '').trim();
     }
 
-    function createOpenAipLayer(overlay, visible) {
+    function createOpenAipSource(overlayId) {
         // openAIP tile server v2: raster tiles up to zoom 14, key as query parameter,
         // four subdomains for load balancing (see https://docs.openaip.net)
+        return new XYZ({
+            url: 'https://{0-3}.api.tiles.openaip.net/api/data/' + overlayId + '/{z}/{x}/{y}.png?apiKey=' + encodeURIComponent(openAipApiKey()),
+            attributions: '<a href="https://www.openaip.net" target="_blank">openAIP</a>',
+            maxZoom: 14
+        });
+    }
+
+    missionControlTab.onOpenAipKeyChanged = function () {
+        if (!map) {
+            return;
+        }
+        const visibility = store.get(OPENAIP_VISIBILITY_KEY, {});
+        const hasKey = openAipApiKey() !== '';
+        map.getLayers().forEach(layer => {
+            const overlayId = layer.get('openaip_overlay');
+            if (overlayId) {
+                layer.setVisible(false);
+                layer.setSource(hasKey ? createOpenAipSource(overlayId) : null);
+                layer.setVisible(hasKey && visibility[overlayId] === true);
+            }
+        });
+        updateOpenAipLayerListUI();
+    };
+
+    function createOpenAipLayer(overlay, visible) {
         const layer = new TileLayer({
-            source: new XYZ({
-                url: 'https://{0-3}.api.tiles.openaip.net/api/data/' + overlay.id + '/{z}/{x}/{y}.png?apiKey=' + encodeURIComponent(openAipApiKey()),
-                attributions: '<a href="https://www.openaip.net" target="_blank">openAIP</a>',
-                maxZoom: 14
-            }),
+            source: createOpenAipSource(overlay.id),
             opacity: 0.85,
             visible: visible
         });
@@ -7049,6 +7070,7 @@ missionControlTab.setBit = function(bits, bit, value) {
 // }
 
 missionControlTab.cleanup = function (callback) {
+    missionControlTab.onOpenAipKeyChanged = null;
     cleanupMissionControlLocationResources();
     if (elevationChartInstance) {
         elevationChartInstance.destroy();
