@@ -419,10 +419,17 @@ auxiliaryTab.initialize = function (callback) {
                 // Check to see if the mode is in range
                 var modeRanges = modeElement.find(' .range');
                 for (let r = 0; r < modeRanges.length; r++) {
+                    const channel = Number.parseInt($(modeRanges[r]).find('.channel').val(), 10);
+                    if (!Number.isInteger(channel) || channel < 0 || channel >= auxChannelCount) {
+                        continue;
+                    }
                     var rangeLow = $(modeRanges[r]).find('.lowerLimitValue').html();
                     var rangeHigh = $(modeRanges[r]).find('.upperLimitValue').html();
                     var markerPosition = $(modeRanges[r]).find('.marker')[0].style.left;
-                    markerPosition = markerPosition.substring(0, markerPosition.length-1);
+                    markerPosition = Number.parseFloat(markerPosition);
+                    if (!Number.isFinite(markerPosition)) {
+                        continue;
+                    }
 
                     rangeLow = (rangeLow - 900) / (2100-900) * 100;
                     rangeHigh = (rangeHigh - 900) / (2100-900) * 100;
