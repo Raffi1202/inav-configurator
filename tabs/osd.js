@@ -3778,6 +3778,7 @@ osdTab.initialize = function (callback) {
                     }
                     Settings.saveInputs(save_to_eeprom);
                 } catch (error) {
+                    console.error('Failed to save OSD layout:', error);
                     GUI.log(i18n.getMessage('osdLayoutSaveFailed'));
                 } finally {
                     saving = false;
