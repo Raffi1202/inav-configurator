@@ -2248,7 +2248,7 @@ OSD.constants = {
                     id: 172,
                     preview: function(osd_data) {
                         const name = FC.PROFILE_NAMES?.control?.[FC.CONFIG.profile];
-                        return name ? name.toUpperCase() : FONT.symbol(SYM.PROFILE) + '1';
+                        return name ? name.toUpperCase() : FONT.symbol(SYM.PROFILE) + (FC.CONFIG.profile + 1);
                     }
                 },
                 {
@@ -2256,7 +2256,7 @@ OSD.constants = {
                     id: 173,
                     preview: function(osd_data) {
                         const name = FC.PROFILE_NAMES?.battery?.[FC.CONFIG.battery_profile];
-                        return name ? name.toUpperCase() : FONT.symbol(SYM.BATT) + '1';
+                        return name ? name.toUpperCase() : FONT.symbol(SYM.BATT) + (FC.CONFIG.battery_profile + 1);
                     }
                 },
                 {
@@ -2264,7 +2264,7 @@ OSD.constants = {
                     id: 174,
                     preview: function(osd_data) {
                         const name = FC.PROFILE_NAMES?.mixer?.[FC.CONFIG.mixer_profile];
-                        return name ? name.toUpperCase() : 'M1';
+                        return name ? name.toUpperCase() : 'M' + (FC.CONFIG.mixer_profile + 1);
                     }
                 },
                 {
