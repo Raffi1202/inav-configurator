@@ -824,10 +824,21 @@ $(function() {
         };
         let profileCopyModal = null;
         let profileCopyRequest = null;
+        let profileCopyInFlight = false;
+
+        GUI.resetProfileCopy = function () {
+            profileCopyRequest = null;
+            profileCopyInFlight = false;
+            $('#copy-profile-confirm').prop('disabled', false);
+            profileCopyModal?.close();
+        };
 
         $('#profiles_wrapper_global .profile-copy').on('click', function (event) {
             event.preventDefault();
 
+            if (!CONFIGURATOR.connectionValid || profileCopyInFlight) {
+                return;
+            }
             const type = Number.parseInt($(this).attr('data-profile-type'));
             const kind = profileCopyKinds[type];
             const fromIndex = kind.current();
@@ -853,7 +864,9 @@ $(function() {
                     content: $('#modal-copy-profile')
                 });
             }
+            $('#copy-profile-confirm').prop('disabled', false);
             profileCopyModal.open();
+            $('#copy-profile-to').trigger('focus');
         });
 
         $(document).on('click', '#copy-profile-cancel', function () {
@@ -862,18 +875,31 @@ $(function() {
 
         $(document).on('click', '#copy-profile-confirm', function () {
             const toIndex = Number.parseInt($('#copy-profile-to').val());
-            if (!profileCopyRequest || Number.isNaN(toIndex)) {
+            if (!CONFIGURATOR.connectionValid || profileCopyInFlight || !profileCopyRequest || Number.isNaN(toIndex)) {
                 return;
             }
             const request = profileCopyRequest;
-            MSP.send_message(MSPCodes.MSP2_INAV_COPY_PROFILE, [request.type, request.fromIndex, toIndex], false, function () {
-                profileCopyModal.close();
-                if (MSP.unsupported) {
+            profileCopyInFlight = true;
+            $('#copy-profile-confirm').prop('disabled', true);
+            const finishCopy = function (response) {
+                // A disconnect invalidates this request, including any late response.
+                if (profileCopyRequest !== request) {
+                    return;
+                }
+                GUI.resetProfileCopy();
+                if (!response) {
+                    GUI.log(i18n.getMessage('copyProfileTransportFailed'));
+                    return;
+                }
+                if (response.unsupported) {
                     GUI.log(i18n.getMessage('copyProfileFailed'));
                     return;
                 }
                 GUI.log(i18n.getMessage('copyProfileDone', [i18n.getMessage(request.kind.label), request.fromIndex + 1, toIndex + 1]));
-            });
+            };
+            if (MSP.send_message(MSPCodes.MSP2_INAV_COPY_PROFILE, [request.type, request.fromIndex, toIndex], false, finishCopy) === false) {
+                finishCopy(false);
+            }
         });
 
     });

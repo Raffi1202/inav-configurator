@@ -2171,6 +2171,9 @@
     "copyProfileDone": {
         "message": "Copied $1 $2 to profile $3."
     },
+    "copyProfileTransportFailed": {
+        "message": "Profile copy could not be confirmed. Check the connection and destination profile before trying again."
+    },
     "copyProfileFailed": {
         "message": "The flight controller did not copy the profile: it needs a firmware with MSP2_INAV_COPY_PROFILE (INAV 10), must be disarmed, and the target slot must exist."
     },
