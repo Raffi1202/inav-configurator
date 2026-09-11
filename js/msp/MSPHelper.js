@@ -263,6 +263,9 @@ var mspHelper = (function () {
                 if (dataHandler.unsupported || data.byteLength < 10) {
                     // firmware without ADSB (error reply, no payload): no vehicles, keep the counters at zero
                     FC.ADSB_VEHICLES.vehiclesCount = 0;
+                    FC.ADSB_VEHICLES.callsignLength = 0;
+                    FC.ADSB_VEHICLES.vehiclePacketCount = 0;
+                    FC.ADSB_VEHICLES.heartbeatPacketCount = 0;
                     break;
                 }
                 FC.ADSB_VEHICLES.vehiclesCount = data.getUint8(byteOffsetCounter++);
