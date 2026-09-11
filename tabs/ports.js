@@ -56,7 +56,7 @@ portsTab.initialize = function (callback) {
 
         $(".tab-ports").addClass("supported");
 
-        var i;
+        let i;
 
         var ports_e = $('.tab-ports .ports');
         var port_configuration_template_e = $('#tab-ports-templates .portConfiguration');
@@ -326,10 +326,10 @@ function updateDefaultBaud(baudSelect, column) {
     const offeredBauds = serialPortHelper.getBauds(group);
     const hasReportedRate = currentBaud !== null && !offeredBauds.includes(String(currentBaud));
     // Preserve a reported rate unless the newly selected protocol mandates its baud.
-    if (!hasReportedRate || (rule && rule.lockedBaud)) {
+    if (!hasReportedRate || rule?.lockedBaud) {
         $baudSelect.children('[value=' + baudRate + ']').prop('selected', true);
     }
-    $baudSelect.prop('disabled', !!(rule && rule.lockedBaud));
+    $baudSelect.prop('disabled', !!rule?.lockedBaud);
 }
 
 portsTab.cleanup = function (callback) {
