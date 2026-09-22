@@ -27,7 +27,9 @@ import { FwApproach } from './../fwApproach';
 import Waypoint from './../waypoint';
 import mspDeduplicationQueue from './mspDeduplicationQueue';
 import mspStatistics from './mspStatistics';
+import { resolveMspWrite, guardMspCallback } from './../mspWriteOutcome';
 import settingsCache from './../settingsCache';
+import { parseProfileNames } from './../profileNames';
 import {Geozone, GeozoneVertex, GeozoneShapes } from './../geozone';
 import { parseDronecanAsyncRequestResponse } from './../dronecanAsyncRequestParse';
 
@@ -165,6 +167,10 @@ var mspHelper = (function () {
                 if (profile_changed > 0 || wasUninitialized) {
                     GUI.updateProfileChange(profile_changed);
                 }
+                if (wasUninitialized) {
+                    // first status of this connection: fetch the profile names for the header dropdowns
+                    MSP.send_message(MSPCodes.MSP2_INAV_PROFILE_NAMES, false, false);
+                }
                 break;
 
             case MSPCodes.MSP_ACTIVEBOXES:
@@ -204,6 +210,15 @@ var mspHelper = (function () {
                 FC.SENSOR_DATA.magnetometer[0] = data.getInt16(12, true) / 1090;
                 FC.SENSOR_DATA.magnetometer[1] = data.getInt16(14, true) / 1090;
                 FC.SENSOR_DATA.magnetometer[2] = data.getInt16(16, true) / 1090;
+                break;
+            case MSPCodes.MSP2_INAV_MAG_UNALIGNED:
+                // Calibrated, but NOT alignment-rotated -- unlike MSP_RAW_IMU's
+                // magnetometer field above, this is unaffected by the current
+                // align_mag/align_board settings. No /1090 division: atan2 is
+                // scale-invariant, and there is no other consumer of this field to match.
+                FC.SENSOR_DATA.magnetometerUnaligned[0] = data.getInt16(0, true);
+                FC.SENSOR_DATA.magnetometerUnaligned[1] = data.getInt16(2, true);
+                FC.SENSOR_DATA.magnetometerUnaligned[2] = data.getInt16(4, true);
                 break;
             case MSPCodes.MSP_SERVO:
                 var servoCount = dataHandler.message_length_expected / 2;
@@ -721,6 +736,14 @@ var mspHelper = (function () {
                 break;
             case MSPCodes.MSP_EEPROM_WRITE:
                 console.log('Settings Saved in EEPROM');
+                // a save may have renamed the active profile
+                MSP.send_message(MSPCodes.MSP2_INAV_PROFILE_NAMES, false, false);
+                break;
+
+            case MSPCodes.MSP2_INAV_PROFILE_NAMES:
+                // null = firmware without the message (unsupported reply) or a malformed payload
+                FC.PROFILE_NAMES = dataHandler.unsupported ? null : parseProfileNames(data);
+                GUI.updateProfileNames();
                 break;
             case MSPCodes.MSP_DEBUGMSG:
                 for (var ii = 0; ii < data.byteLength; ii++) {
@@ -852,7 +875,7 @@ var mspHelper = (function () {
                 offset += 2;
                 if (semver.gt(FC.CONFIG.flightControllerVersion, "4.1.0")) {
                     FC.CONFIG.osdUsed = data.getUint8(offset++);
-                    FC.CONFIG.commCompatability = data.getUint8(offset++);
+                    FC.CONFIG.capabilities = data.getUint8(offset++);
                     let targetNameLen = data.getUint8(offset++);
                     let targetName = "";
                     targetNameLen += offset;
@@ -1900,7 +1923,7 @@ var mspHelper = (function () {
                 break;    
 
             case MSPCodes.MSP2_MZTC_CONFIG:
-                // Fixed 12 byte payload, little endian, one field at a time.
+                // Fixed 11 byte payload, little endian, one field at a time.
                 // The firmware writes it with the sbufWrite helpers, so there
                 // is no compiler padding to account for here. The serial port
                 // and its baud rate are not in this payload. They live in the
@@ -1945,6 +1968,27 @@ var mspHelper = (function () {
 
             case MSPCodes.MSP2_SET_MZTC_CONFIG:
                 console.log("MZTC config saved");
+                break;
+
+            case MSPCodes.MSP2_INAV_ESC_SRXL2_STATUS:
+                if (dataHandler.unsupported) {
+                    /* Built without the Smart ESC driver. Recorded rather than
+                     * only logged, so the tabs can stop offering a protocol and
+                     * a port function this board cannot perform. */
+                    FC.SRXL2_STATUS.supported = false;
+                    break;
+                }
+                FC.SRXL2_STATUS.supported = true;
+                FC.SRXL2_STATUS.phase = data.getUint8(0);
+                FC.SRXL2_STATUS.connected = data.getUint8(1) !== 0;
+                /* Older firmware stops here; the fields past the end read as
+                 * zero rather than as a refusal that never happened. */
+                FC.SRXL2_STATUS.lastResult = data.byteLength > 2 ? data.getUint8(2) : 0;
+                FC.SRXL2_STATUS.ports = data.byteLength > 3 ? data.getUint8(3) : 0;
+                FC.SRXL2_STATUS.motors = data.byteLength > 4 ? data.getUint8(4) : 0;
+                break;
+
+            case MSPCodes.MSP2_INAV_ESC_SRXL2_CALIBRATE:
                 break;
 
             default:
@@ -2553,7 +2597,7 @@ var mspHelper = (function () {
 
 
             case MSPCodes.MSP2_SET_MZTC_CONFIG:
-                // Fixed 12 byte payload matching MSP2_MZTC_CONFIG. The firmware
+                // Fixed 11 byte payload matching MSP2_MZTC_CONFIG. The firmware
                 // validates the whole request before applying any of it, so an
                 // out of range value is rejected in full.
                 // One push in field order. The field order is the wire order,
@@ -3048,7 +3092,7 @@ var mspHelper = (function () {
                 buffer.push(color.s);
                 buffer.push(color.v);
             }
-            MSP.send_message(MSPCodes.MSP_SET_LED_COLORS, buffer, false, onCompleteCallback);
+            MSP.send_message(MSPCodes.MSP_SET_LED_COLORS, buffer, false, guardMspCallback(onCompleteCallback));
         }
     };
 
@@ -3143,7 +3187,7 @@ var mspHelper = (function () {
             position++;
             var nextFunction = (position === indicesToSend.length) ? onCompleteCallback : send_next_led_strip_config;
 
-            MSP.send_message(MSPCodes.MSP2_INAV_SET_LED_STRIP_CONFIG_EX, buffer, false, nextFunction);
+            MSP.send_message(MSPCodes.MSP2_INAV_SET_LED_STRIP_CONFIG_EX, buffer, false, guardMspCallback(nextFunction));
         }
     };
 
@@ -3173,7 +3217,7 @@ var mspHelper = (function () {
                 nextFunction = onCompleteCallback;
             }
 
-            MSP.send_message(MSPCodes.MSP_SET_LED_STRIP_MODECOLOR, buffer, false, nextFunction);
+            MSP.send_message(MSPCodes.MSP_SET_LED_STRIP_MODECOLOR, buffer, false, guardMspCallback(nextFunction));
         }
     };
 
@@ -3791,9 +3835,14 @@ var mspHelper = (function () {
     };
 
     self.setSetting = function (name, value, callback) {
-        this.encodeSetting(name, value).then(function (data) {
-            return MSP.promise(MSPCodes.MSPV2_SET_SETTING, data).then(callback);
-        }).catch(error =>  {
+        // resolveMspWrite() treats a refused write and a write the queue
+        // dropped after exhausting retries (MSP.promise() resolves false
+        // rather than rejecting for that case) the same way: stop the save
+        // chain without reaching callback. An exception thrown by callback
+        // itself still propagates instead of being silently swallowed.
+        return this.encodeSetting(name, value).then(function (data) {
+            return resolveMspWrite(MSP.promise(MSPCodes.MSPV2_SET_SETTING, data), callback);
+        }, function (error) {
             console.log("Invalid setting: " + name, error);
             return Promise.resolve().then(callback);
         });
@@ -3864,6 +3913,10 @@ var mspHelper = (function () {
 
     self.loadMixerConfig = function (callback) {
         MSP.send_message(MSPCodes.MSP2_INAV_MIXER, false, false, callback);
+    };
+
+    self.loadProfileNames = function (callback) {
+        MSP.send_message(MSPCodes.MSP2_INAV_PROFILE_NAMES, false, false, callback);
     };
 
     self.saveMixerConfig = function (callback) {
